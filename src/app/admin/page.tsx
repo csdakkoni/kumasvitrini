@@ -42,8 +42,8 @@ export default function AdminPage() {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === tab.id
-                                    ? 'bg-primary-500 text-white shadow-sm'
-                                    : 'text-surface-600 hover:text-surface-800 hover:bg-surface-50'
+                                ? 'bg-primary-500 text-white shadow-sm'
+                                : 'text-surface-600 hover:text-surface-800 hover:bg-surface-50'
                                 }`}
                         >
                             <tab.icon size={16} />
@@ -96,10 +96,10 @@ export default function AdminPage() {
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <h2 className="text-lg font-bold text-surface-800">{products.length} Ürün</h2>
-                            <button className="btn btn-primary btn-sm" disabled>
+                            <Link href="/admin/urunler/yeni" className="btn btn-primary btn-sm">
                                 <Plus size={16} />
-                                Ürün Ekle (Yakında)
-                            </button>
+                                Ürün Ekle
+                            </Link>
                         </div>
 
                         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
