@@ -1,9 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Save, Upload, Plus, X, Eye } from 'lucide-react';
-import { categories } from '@/lib/mock-data';
 
 interface ProductForm {
     name: string;
@@ -49,11 +48,27 @@ function slugify(text: string): string {
         .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
 
+interface Category {
+    id: string;
+    name: string;
+    slug: string;
+}
+
 export default function AdminProductNew() {
     const [form, setForm] = useState<ProductForm>(emptyForm);
     const [isSaving, setIsSaving] = useState(false);
     const [saveResult, setSaveResult] = useState<'success' | 'error' | null>(null);
     const [errorMessage, setErrorMessage] = useState('');
+    const [categories, setCategories] = useState<Category[]>([]);
+
+    useEffect(() => {
+        fetch('/api/admin/categories')
+            .then(res => res.json())
+            .then(data => {
+                if (data.categories) setCategories(data.categories);
+            })
+            .catch(() => {});
+    }, []);
 
     const updateField = (field: keyof ProductForm, value: string | boolean) => {
         setForm((prev) => {
