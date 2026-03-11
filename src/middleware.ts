@@ -1,50 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export function middleware(request: NextRequest) {
-    // Only protect /admin routes
-    if (!request.nextUrl.pathname.startsWith('/admin')) {
+    const { pathname } = request.nextUrl;
+
+    // Allow login page and login/logout API without auth
+    if (
+        pathname === '/admin/giris' ||
+        pathname === '/api/admin/login' ||
+        pathname === '/api/admin/logout'
+    ) {
         return NextResponse.next();
     }
 
-    // Also protect /api/admin routes
-    const isAdminRoute =
-        request.nextUrl.pathname.startsWith('/admin') ||
-        request.nextUrl.pathname.startsWith('/api/admin');
+    // Protect /admin and /api/admin routes
+    const isProtected =
+        pathname.startsWith('/admin') ||
+        pathname.startsWith('/api/admin');
 
-    if (!isAdminRoute) {
+    if (!isProtected) {
         return NextResponse.next();
     }
 
-    const authHeader = request.headers.get('authorization');
+    // Check for admin cookie
+    const adminToken = request.cookies.get('admin_token');
 
-    if (authHeader) {
-        const [scheme, encoded] = authHeader.split(' ');
-
-        if (scheme === 'Basic' && encoded) {
-            const decoded = atob(encoded);
-            const [user, password] = decoded.split(':');
-
-            const adminUser = process.env.ADMIN_USERNAME || 'admin';
-            const adminPass = process.env.ADMIN_PASSWORD;
-
-            // If no password is set, allow access (dev mode)
-            if (!adminPass) {
-                return NextResponse.next();
-            }
-
-            if (user === adminUser && password === adminPass) {
-                return NextResponse.next();
-            }
-        }
+    if (adminToken?.value) {
+        return NextResponse.next();
     }
 
-    // Return 401 with basic auth challenge
-    return new NextResponse('Yetkilendirme gerekli', {
-        status: 401,
-        headers: {
-            'WWW-Authenticate': 'Basic realm="Admin Panel"',
-        },
-    });
+    // For API routes, return 401 JSON
+    if (pathname.startsWith('/api/admin')) {
+        return NextResponse.json(
+            { error: 'Yetkilendirme gerekli' },
+            { status: 401 }
+        );
+    }
+
+    // For page routes, redirect to login
+    const loginUrl = new URL('/admin/giris', request.url);
+    return NextResponse.redirect(loginUrl);
 }
 
 export const config = {
