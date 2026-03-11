@@ -53,6 +53,7 @@ export default function AdminProductNew() {
     const [form, setForm] = useState<ProductForm>(emptyForm);
     const [isSaving, setIsSaving] = useState(false);
     const [saveResult, setSaveResult] = useState<'success' | 'error' | null>(null);
+    const [errorMessage, setErrorMessage] = useState('');
 
     const updateField = (field: keyof ProductForm, value: string | boolean) => {
         setForm((prev) => {
@@ -90,6 +91,7 @@ export default function AdminProductNew() {
         e.preventDefault();
         setIsSaving(true);
         setSaveResult(null);
+        setErrorMessage('');
 
         try {
             const res = await fetch('/api/admin/products', {
@@ -106,14 +108,18 @@ export default function AdminProductNew() {
                 }),
             });
 
+            const data = await res.json();
+
             if (res.ok) {
                 setSaveResult('success');
                 setForm(emptyForm);
             } else {
                 setSaveResult('error');
+                setErrorMessage(data.error || 'Bilinmeyen hata');
             }
-        } catch {
+        } catch (err) {
             setSaveResult('error');
+            setErrorMessage(err instanceof Error ? err.message : 'Bağlantı hatası');
         } finally {
             setIsSaving(false);
         }
@@ -148,7 +154,7 @@ export default function AdminProductNew() {
                 )}
                 {saveResult === 'error' && (
                     <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 mb-6">
-                        ❌ Hata oluştu. Supabase bağlantısını kontrol edin.
+                        ❌ {errorMessage || 'Hata oluştu.'}
                     </div>
                 )}
 

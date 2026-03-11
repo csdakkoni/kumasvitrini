@@ -7,19 +7,21 @@ function getAdminClient() {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!url || !serviceKey) {
-        return null;
+        return { client: null, missing: { url: !url, serviceKey: !serviceKey } };
     }
 
-    return createClient(url, serviceKey);
+    return { client: createClient(url, serviceKey), missing: null };
 }
 
 // POST - Create product
 export async function POST(request: NextRequest) {
-    const supabase = getAdminClient();
+    const { client: supabase, missing } = getAdminClient();
 
     if (!supabase) {
         return NextResponse.json(
-            { error: 'Supabase yapılandırılmamış. Environment variables kontrol edin.' },
+            { 
+                error: `Supabase yapılandırılmamış. Eksik: ${missing?.url ? 'NEXT_PUBLIC_SUPABASE_URL ' : ''}${missing?.serviceKey ? 'SUPABASE_SERVICE_ROLE_KEY' : ''}`.trim()
+            },
             { status: 500 }
         );
     }
@@ -51,23 +53,23 @@ export async function POST(request: NextRequest) {
 
         if (error) {
             console.error('Supabase error:', error);
-            return NextResponse.json({ error: error.message }, { status: 400 });
+            return NextResponse.json({ error: `Supabase hatası: ${error.message} (code: ${error.code})` }, { status: 400 });
         }
 
         return NextResponse.json({ product: data }, { status: 201 });
     } catch (err) {
         console.error('API error:', err);
-        return NextResponse.json({ error: 'Sunucu hatası' }, { status: 500 });
+        return NextResponse.json({ error: `Sunucu hatası: ${err instanceof Error ? err.message : String(err)}` }, { status: 500 });
     }
 }
 
 // GET - List products
 export async function GET() {
-    const supabase = getAdminClient();
+    const { client: supabase, missing } = getAdminClient();
 
     if (!supabase) {
         return NextResponse.json(
-            { error: 'Supabase yapılandırılmamış' },
+            { error: `Supabase yapılandırılmamış. Eksik: ${missing?.url ? 'NEXT_PUBLIC_SUPABASE_URL ' : ''}${missing?.serviceKey ? 'SUPABASE_SERVICE_ROLE_KEY' : ''}`.trim() },
             { status: 500 }
         );
     }
@@ -78,7 +80,7 @@ export async function GET() {
         .order('created_at', { ascending: false });
 
     if (error) {
-        return NextResponse.json({ error: error.message }, { status: 400 });
+        return NextResponse.json({ error: `Supabase hatası: ${error.message}` }, { status: 400 });
     }
 
     return NextResponse.json({ products: data });
