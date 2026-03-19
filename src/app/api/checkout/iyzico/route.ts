@@ -1,4 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
+
+// ---- iyzico IYZWSv2 Auth Helper ----
+function generateAuthorizationHeader(apiKey: string, secretKey: string, requestBody: string): string {
+    const randomHeaderValue = crypto.randomUUID().replace(/-/g, '').substring(0, 8) + String(Date.now());
+    const uriPath = '/payment/iyzipos/checkoutform/initialize/auth/ecom';
+
+    const hashStr = randomHeaderValue + uriPath + requestBody;
+    const signature = crypto
+        .createHmac('sha256', secretKey)
+        .update(hashStr)
+        .digest('base64');
+
+    const authorizationParams = [
+        'apiKey:' + apiKey,
+        'randomHeaderValue:' + randomHeaderValue,
+        'signature:' + signature,
+    ].join('&');
+
+    return 'IYZWSv2 ' + Buffer.from(authorizationParams).toString('base64');
+}
 
 export async function POST(req: NextRequest) {
     let step = 'init';
@@ -83,9 +104,7 @@ export async function POST(req: NextRequest) {
 
         await supabaseAdmin.from('order_items').insert(orderItemsToInsert);
 
-        const orderRes = { id: order.id };
-
-        // Step 3: Prepare iyzico request
+        // Step 3: Prepare iyzico request payload
         step = 'prepare_iyzico';
         const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
         const protocol = req.headers.get('x-forwarded-proto') || 'https';
@@ -102,16 +121,16 @@ export async function POST(req: NextRequest) {
 
         const buyerName = (orderData.customer_name || 'Musteri').split(' ');
 
-        const request = {
+        const iyzicoPayload = {
             locale: "tr",
-            conversationId: String(orderRes.id),
+            conversationId: String(order.id),
             price: String(Number(orderData.subtotal || orderData.total_amount).toFixed(2)),
             paidPrice: String(Number(orderData.total_amount).toFixed(2)),
             currency: "TRY",
             basketId: String(orderData.order_number),
             paymentGroup: "PRODUCT",
             callbackUrl: `${siteBaseUrl}/api/checkout/callback`,
-            enabledInstallments: [2, 3, 6, 9],
+            enabledInstallments: [1, 2, 3, 6, 9],
             buyer: {
                 id: String(orderData.customer_email || `GUEST-${Date.now()}`),
                 name: String(buyerName[0] || "Musteri"),
@@ -144,34 +163,32 @@ export async function POST(req: NextRequest) {
             basketItems: basketItems
         };
 
-        // Step 4: Initialize iyzipay dynamically (avoid import issues)
-        step = 'iyzico_init';
-        const Iyzipay = (await import('iyzipay')).default;
-        const iyzipayClient = new Iyzipay({
-            apiKey: apiKey,
-            secretKey: secretKey,
-            uri: baseUrl
-        });
-
-        // Step 5: Call Iyzico
+        // Step 4: Call iyzico REST API directly (no npm package needed)
         step = 'iyzico_call';
-        const checkoutFormInitialize = await new Promise<any>((resolve, reject) => {
-            const timeout = setTimeout(() => reject(new Error('Iyzico timeout after 15s')), 15000);
-            iyzipayClient.checkoutFormInitialize.create(request as any, (err: any, result: any) => {
-                clearTimeout(timeout);
-                if (err) return reject(err);
-                resolve(result);
-            });
+        const requestBodyStr = JSON.stringify(iyzicoPayload);
+        const authorization = generateAuthorizationHeader(apiKey, secretKey, requestBodyStr);
+
+        const iyzicoUrl = `${baseUrl}/payment/iyzipos/checkoutform/initialize/auth/ecom`;
+
+        const iyzicoResponse = await fetch(iyzicoUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': authorization,
+                'Accept': 'application/json',
+            },
+            body: requestBodyStr,
         });
 
         step = 'iyzico_response';
-        if (checkoutFormInitialize.status !== 'success') {
-            console.error("Iyzico Error:", JSON.stringify(checkoutFormInitialize));
+        const iyzicoData = await iyzicoResponse.json();
+
+        if (iyzicoData.status !== 'success') {
+            console.error("Iyzico Error:", JSON.stringify(iyzicoData));
             return NextResponse.json({ 
                 success: false, 
-                error: checkoutFormInitialize.errorMessage || "Iyzico initialization failed",
-                errorCode: checkoutFormInitialize.errorCode,
-                iyzicoRaw: checkoutFormInitialize,
+                error: iyzicoData.errorMessage || "Iyzico initialization failed",
+                errorCode: iyzicoData.errorCode,
                 step 
             }, { status: 500 });
         }
@@ -179,9 +196,9 @@ export async function POST(req: NextRequest) {
         // Return token and HTML content to client
         return NextResponse.json({
             success: true,
-            checkoutFormContent: checkoutFormInitialize.checkoutFormContent,
-            token: checkoutFormInitialize.token,
-            orderId: orderRes.id
+            checkoutFormContent: iyzicoData.checkoutFormContent,
+            token: iyzicoData.token,
+            orderId: order.id
         });
 
     } catch (error: any) {
