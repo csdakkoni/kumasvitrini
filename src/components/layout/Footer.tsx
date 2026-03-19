@@ -134,7 +134,7 @@ export function Footer() {
                     <div className="flex items-center gap-4">
                         <img src="/images/payment/visa.svg" alt="Visa" className="h-6 opacity-50 hover:opacity-100 transition-opacity" />
                         <img src="/images/payment/mastercard.svg" alt="Mastercard" className="h-6 opacity-50 hover:opacity-100 transition-opacity" />
-                        <img src="/images/payment/troy.svg" alt="Troy" className="h-6 opacity-50 hover:opacity-100 transition-opacity" />
+                        <img src="/images/payment/troy.png" alt="Troy" className="h-6 opacity-50 hover:opacity-100 transition-opacity" />
                     </div>
                 </div>
             </div>

@@ -286,22 +286,49 @@ export default function CheckoutPage() {
                                                         if (isSubmitting) return;
                                                         setIsSubmitting(true);
                                                         try {
+                                                            const subtotal = items.reduce((total, item) => total + (item.product.price_per_meter * item.meters), 0);
+                                                            const orderData = {
+                                                                customer_name: formData.fullName,
+                                                                customer_phone: formData.phone,
+                                                                customer_email: formData.email,
+                                                                status: 'pending' as const,
+                                                                subtotal: subtotal,
+                                                                total_amount: grandTotal,
+                                                                shipping_cost: shippingCost,
+                                                                shipping_method: shippingOption.name,
+                                                                notes: formData.notes,
+                                                                payment_status: 'pending' as const,
+                                                                payment_method: 'iyzico',
+                                                                shipping_address: {
+                                                                    full_name: formData.fullName,
+                                                                    phone: formData.phone,
+                                                                    address_line1: formData.address,
+                                                                    city: formData.city,
+                                                                    district: formData.district,
+                                                                    postal_code: formData.postalCode
+                                                                }
+                                                            };
+                                                            
                                                             const res = await fetch('/api/checkout/iyzico', {
                                                                 method: 'POST',
                                                                 headers: { 'Content-Type': 'application/json' },
                                                                 body: JSON.stringify({
                                                                     items: items.map(i => ({
+                                                                        product_id: i.product.id,
+                                                                        product_name: i.product.name,
+                                                                        product_slug: i.product.slug,
                                                                         ...i.product,
                                                                         meters: i.meters,
+                                                                        unit_price: i.product.price_per_meter,
+                                                                        total_price: i.meters * i.product.price_per_meter,
                                                                         selectedColor: i.selectedColor || 'Standart'
                                                                     })),
-                                                                    shippingOption,
-                                                                    formData
+                                                                    orderData
                                                                 })
                                                             });
                                                             const data = await res.json();
-                                                            if (res.ok && data.formContent) {
-                                                                setIyzicoFormContent(data.formContent);
+                                                            if (res.ok && data.checkoutFormContent) {
+                                                                setIyzicoFormContent(data.checkoutFormContent);
                                                             } else {
                                                                 alert(data.error || 'Ödeme formu başlatılamadı.');
                                                             }
