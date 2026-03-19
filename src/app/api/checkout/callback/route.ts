@@ -1,11 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 
+// Return HTML that redirects the TOP window (escapes iyzico's iframe)
+function redirectParentWindow(url: string) {
+    const html = `<!DOCTYPE html>
+<html><head><title>Yönlendiriliyor...</title></head>
+<body>
+<p>Yönlendiriliyor...</p>
+<script>
+if (window.top) { window.top.location.href = "${url}"; }
+else { window.location.href = "${url}"; }
+</script>
+</body></html>`;
+
+    return new NextResponse(html, {
+        status: 200,
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+    });
+}
+
 async function handleCallback(token: string, reqUrl: string) {
     const siteUrl = new URL(reqUrl).origin;
 
     if (!token) {
-        return NextResponse.redirect(`${siteUrl}/sepet?error=no_token`);
+        return redirectParentWindow(`${siteUrl}/sepet?error=no_token`);
     }
 
     try {
@@ -70,9 +88,9 @@ async function handleCallback(token: string, reqUrl: string) {
                     })
                     .eq('id', orderData.id);
 
-                return NextResponse.redirect(`${siteUrl}/siparis-basarili?order=${orderData.id}`);
+                return redirectParentWindow(`${siteUrl}/siparis-basarili?order=${orderData.id}`);
             } else {
-                return NextResponse.redirect(`${siteUrl}/sepet?error=order_not_found`);
+                return redirectParentWindow(`${siteUrl}/sepet?error=order_not_found`);
             }
         } else {
             console.error('Iyzico Payment Failed:', JSON.stringify(retrieveResult));
@@ -83,12 +101,12 @@ async function handleCallback(token: string, reqUrl: string) {
                     .update({ payment_status: 'failed' })
                     .eq('order_number', basketId);
             }
-            return NextResponse.redirect(`${siteUrl}/sepet?error=payment_failed`);
+            return redirectParentWindow(`${siteUrl}/sepet?error=payment_failed`);
         }
 
     } catch (error: any) {
         console.error('Iyzico Callback Error:', error);
-        return NextResponse.redirect(`${siteUrl}/sepet?error=system_error`);
+        return redirectParentWindow(`${siteUrl}/sepet?error=system_error`);
     }
 }
 
@@ -117,4 +135,3 @@ export async function GET(req: NextRequest) {
     const token = req.nextUrl.searchParams.get('token') || '';
     return handleCallback(token, req.url);
 }
-
