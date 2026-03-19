@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { CreditCard, Truck, MapPin, User, Phone, Mail, ChevronRight, Lock, Package } from 'lucide-react';
@@ -15,6 +15,53 @@ const SHIPPING_OPTIONS = [
     { id: 'ups', name: 'UPS Kargo', price: 69.90, days: '1-2 iş günü', logo: '📬' },
     { id: 'aras', name: 'Aras Kargo', price: 44.90, days: '2-4 iş günü', logo: '🚚' },
 ];
+
+// Component that properly renders iyzico's checkout form (including script execution)
+function IyzicoFormRenderer({ html }: { html: string }) {
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!containerRef.current || !html) return;
+
+        // Create a container for the form
+        const formContainer = containerRef.current;
+        
+        // Parse the HTML and separate scripts from non-script content
+        const temp = document.createElement('div');
+        temp.innerHTML = html;
+
+        // Add the iyzipay checkout form target div
+        const targetDiv = document.createElement('div');
+        targetDiv.id = 'iyzipay-checkout-form';
+        targetDiv.className = 'responsive';
+        formContainer.appendChild(targetDiv);
+
+        // Extract and execute scripts
+        const scripts = temp.querySelectorAll('script');
+        scripts.forEach((originalScript) => {
+            const newScript = document.createElement('script');
+            // Copy attributes
+            Array.from(originalScript.attributes).forEach(attr => {
+                newScript.setAttribute(attr.name, attr.value);
+            });
+            // Copy inline content
+            if (originalScript.textContent) {
+                newScript.textContent = originalScript.textContent;
+            }
+            formContainer.appendChild(newScript);
+        });
+
+        return () => {
+            formContainer.innerHTML = '';
+        };
+    }, [html]);
+
+    return (
+        <div className="w-full min-h-[400px]">
+            <div ref={containerRef} />
+        </div>
+    );
+}
 
 export default function CheckoutPage() {
     const { items, isLoaded, totalPrice } = useCart();
@@ -352,10 +399,7 @@ export default function CheckoutPage() {
                                                 </button>
                                             </div>
                                         ) : (
-                                            <div className="w-full">
-                                                <div id="iyzipay-checkout-form" className="responsive" />
-                                                <div dangerouslySetInnerHTML={{ __html: iyzicoFormContent }} />
-                                            </div>
+                                            <IyzicoFormRenderer html={iyzicoFormContent} />
                                         )}
                                     </div>
                                 )}
