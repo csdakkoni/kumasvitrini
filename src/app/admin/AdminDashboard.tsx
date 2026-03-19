@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatPrice } from '@/lib/utils';
-import { Package, Tag, TrendingUp, AlertTriangle, Edit, Eye, Plus, BarChart3, LogOut, ShoppingBag, CheckCircle, Clock, XCircle, Truck } from 'lucide-react';
+import { Package, Tag, TrendingUp, AlertTriangle, Edit, Eye, Plus, BarChart3, LogOut, ShoppingBag, CheckCircle, Clock, XCircle, Truck, Printer, ChevronDown, ChevronUp } from 'lucide-react';
 import { Product, Category, Order, OrderStatus } from '@/lib/types';
 import { updateOrderStatus } from '@/lib/services/api';
 
@@ -20,6 +20,7 @@ export default function AdminDashboard({ initialProducts: products, initialCateg
     const [loggingOut, setLoggingOut] = useState(false);
     const [orders, setOrders] = useState<Order[]>(initialOrders);
     const [categories, setCategories] = useState<Category[]>(initialCategories);
+    const [expandedOrders, setExpandedOrders] = useState<Record<string, boolean>>({});
     
     // Category Modal State
     const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -77,6 +78,95 @@ export default function AdminDashboard({ initialProducts: products, initialCateg
             console.error(error);
             alert('Durum güncellenirken hata oluştu');
         }
+    };
+
+    const toggleOrderExpand = (orderId: string) => {
+        setExpandedOrders(prev => ({ ...prev, [orderId]: !prev[orderId] }));
+    };
+
+    const handlePrintLabel = (order: Order) => {
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) return;
+
+        const dateStr = new Date(order.created_at).toLocaleDateString('tr-TR');
+        const itemsList = order.items?.map(item => `
+            <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${item.product_name}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${item.selected_color}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #e5e7eb; text-align: right;">${item.meters}m</td>
+            </tr>
+        `).join('') || '';
+
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Kargo Etiketi - #${order.id.split('-')[0].toUpperCase()}</title>
+                    <style>
+                        body { font-family: system-ui, -apple-system, sans-serif; color: #111827; line-height: 1.5; padding: 40px; }
+                        .label-container { border: 2px solid #000; padding: 30px; max-width: 600px; margin: 0 auto; }
+                        .header { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 20px; align-items: end; margin-bottom: 20px; }
+                        .header h1 { margin: 0; font-size: 24px; font-weight: 800; }
+                        .header .meta { text-align: right; font-size: 14px; }
+                        .section { margin-bottom: 25px; }
+                        .section h3 { margin: 0 0 5px 0; font-size: 12px; text-transform: uppercase; color: #6b7280; }
+                        .address-box { font-size: 16px; font-weight: 500; }
+                        .contact { font-size: 14px; margin-top: 5px; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+                        th { text-align: left; padding: 8px; border-bottom: 2px solid #d1d5db; }
+                    </style>
+                </head>
+                <body>
+                    <div class="label-container">
+                        <div class="header">
+                            <div>
+                                <h1>KUMAŞ VİTRİNİ</h1>
+                                <div style="font-size: 12px; margin-top: 4px;">Gönderici: Kumaş Vitrini A.Ş.</div>
+                            </div>
+                            <div class="meta">
+                                <div><strong>Sipariş No:</strong> #${order.id.split('-')[0].toUpperCase()}</div>
+                                <div><strong>Tarih:</strong> ${dateStr}</div>
+                                <div><strong>Kargo:</strong> ${order.shipping_method || 'Belirtilmedi'}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="section">
+                            <h3>ALICI TESLİMAT BİLGİLERİ</h3>
+                            <div class="address-box">
+                                ${order.shipping_address.full_name}<br>
+                                ${order.shipping_address.address_line1}<br>
+                                ${order.shipping_address.address_line2 ? order.shipping_address.address_line2 + '<br>' : ''}
+                                ${order.shipping_address.district} / ${order.shipping_address.city}<br>
+                                ${order.shipping_address.postal_code}
+                            </div>
+                            <div class="contact">
+                                <strong>Tel:</strong> ${order.shipping_address.phone}<br>
+                                <strong>E-Posta:</strong> ${order.customer_email}
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <h3>SİPARİŞ İÇERİĞİ</h3>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Ürün</th>
+                                        <th>Renk</th>
+                                        <th style="text-align: right;">Miktar</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${itemsList}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <script>
+                        window.onload = () => window.print();
+                    </script>
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
     };
 
     const generateUpsLabel = async (order: Order) => {
@@ -295,68 +385,120 @@ export default function AdminDashboard({ initialProducts: products, initialCateg
                                     </thead>
                                     <tbody>
                                         {orders.map((order) => (
-                                            <tr key={order.id} className="border-b border-surface-50 hover:bg-surface-50 transition-colors">
-                                                <td className="px-4 py-3 text-sm font-medium text-surface-800">
-                                                    #{order.id.split('-')[0].toUpperCase()}
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <div className="text-sm font-medium text-surface-800">{order.customer_name}</div>
-                                                    <div className="text-xs text-surface-400">{order.customer_phone}</div>
-                                                </td>
-                                                <td className="px-4 py-3 text-sm text-surface-600">
-                                                    {new Date(order.created_at).toLocaleDateString('tr-TR')}
-                                                </td>
-                                                <td className="px-4 py-3 text-sm font-bold text-primary-600 text-right">
-                                                    {formatPrice(order.total_amount)}
-                                                </td>
-                                                <td className="px-4 py-3 text-center">
-                                                    <select
-                                                        value={order.status}
-                                                        onChange={(e) => handleStatusChage(order.id, e.target.value as OrderStatus)}
-                                                        className={`text-xs font-semibold rounded-lg px-2 py-1 outline-none border cursor-pointer
-                                                            ${order.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                                                            order.status === 'confirmed' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                                            order.status === 'preparing' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                                                            order.status === 'shipped' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
-                                                            order.status === 'delivered' ? 'bg-green-50 text-green-700 border-green-200' :
-                                                            'bg-red-50 text-red-700 border-red-200'
-                                                        }`}
-                                                    >
-                                                        <option value="pending">Bekliyor</option>
-                                                        <option value="confirmed">Onaylandı</option>
-                                                        <option value="preparing">Hazırlanıyor</option>
-                                                        <option value="shipped">Kargoya Verildi</option>
-                                                        <option value="delivered">Teslim Edildi</option>
-                                                        <option value="cancelled">İptal Edildi</option>
-                                                    </select>
-                                                </td>
-                                                <td className="px-4 py-3 text-right">
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        {order.tracking_number ? (
-                                                            <span className="text-xs bg-indigo-50 text-indigo-700 px-2 py-1 rounded-md font-medium" title="Kargo Takip No">
-                                                                {order.tracking_number}
-                                                            </span>
-                                                        ) : order.shipping_method?.toLowerCase().includes('ups') ? (
-                                                            <button
-                                                                className="text-xs flex items-center gap-1 bg-amber-50 text-amber-700 hover:bg-amber-100 px-2 py-1 rounded-md font-medium transition-colors border border-amber-200"
-                                                                onClick={() => generateUpsLabel(order)}
-                                                                title="UPS Barkodu Oluştur"
-                                                            >
-                                                                <Truck size={14} />
-                                                                UPS Barkod
-                                                            </button>
-                                                        ) : null}
-
-                                                        <button
-                                                            className="p-1.5 text-surface-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                                                            title="Sipariş Detayı"
-                                                            onClick={() => alert(`Detay:\n\nKargo: ${order.shipping_method}\nAdres: ${order.shipping_address.city}/${order.shipping_address.district}\nKalemler: ${order.items?.length || 0} ürün\nNot: ${order.notes || 'Yok'}`)}
+                                            <React.Fragment key={order.id}>
+                                                <tr className="border-b border-surface-50 hover:bg-surface-50 transition-colors">
+                                                    <td className="px-4 py-3 text-sm font-medium text-surface-800">
+                                                        #{order.id.split('-')[0].toUpperCase()}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <div className="text-sm font-medium text-surface-800">{order.customer_name}</div>
+                                                        <div className="text-xs text-surface-400">{order.customer_phone}</div>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-sm text-surface-600">
+                                                        {new Date(order.created_at).toLocaleDateString('tr-TR')}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-sm font-bold text-primary-600 text-right">
+                                                        {formatPrice(order.total_amount)}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        <select
+                                                            value={order.status}
+                                                            onChange={(e) => handleStatusChage(order.id, e.target.value as OrderStatus)}
+                                                            className={`text-xs font-semibold rounded-lg px-2 py-1 outline-none border cursor-pointer
+                                                                ${order.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                                                order.status === 'confirmed' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                                                order.status === 'preparing' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                                                                order.status === 'shipped' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
+                                                                order.status === 'delivered' ? 'bg-green-50 text-green-700 border-green-200' :
+                                                                'bg-red-50 text-red-700 border-red-200'
+                                                            }`}
                                                         >
-                                                            <Eye size={16} />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
+                                                            <option value="pending">Bekliyor</option>
+                                                            <option value="confirmed">Onaylandı</option>
+                                                            <option value="preparing">Hazırlanıyor</option>
+                                                            <option value="shipped">Kargoya Verildi</option>
+                                                            <option value="delivered">Teslim Edildi</option>
+                                                            <option value="cancelled">İptal Edildi</option>
+                                                        </select>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right">
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            {order.tracking_number && (
+                                                                <span className="text-xs bg-indigo-50 text-indigo-700 px-2 py-1 rounded-md font-medium" title="Kargo Takip No">
+                                                                    {order.tracking_number}
+                                                                </span>
+                                                            )}
+                                                            <button
+                                                                className="p-1.5 text-surface-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors border shadow-sm bg-white"
+                                                                title="Kargo Etiketi Yazdır"
+                                                                onClick={() => handlePrintLabel(order)}
+                                                            >
+                                                                <Printer size={16} />
+                                                            </button>
+                                                            <button
+                                                                className="p-1.5 text-surface-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                                                                title="Detayları Göster"
+                                                                onClick={() => toggleOrderExpand(order.id)}
+                                                            >
+                                                                {expandedOrders[order.id] ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                {/* Expanded Details Row */}
+                                                {expandedOrders[order.id] && (
+                                                    <tr className="bg-surface-50/50">
+                                                        <td colSpan={6} className="px-4 py-4">
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-white rounded-xl border border-surface-100 shadow-sm">
+                                                                {/* Address Block */}
+                                                                <div>
+                                                                    <h4 className="text-xs font-bold text-surface-400 uppercase tracking-wider mb-3">Teslimat & İletişim</h4>
+                                                                    <div className="space-y-2 text-sm">
+                                                                        <p><span className="font-semibold text-surface-700">Alıcı:</span> {order.shipping_address.full_name}</p>
+                                                                        <p><span className="font-semibold text-surface-700">Email:</span> {order.customer_email}</p>
+                                                                        <p><span className="font-semibold text-surface-700">Telefon:</span> {order.shipping_address.phone}</p>
+                                                                        <div className="pt-2">
+                                                                            <span className="font-semibold text-surface-700 block mb-1">Adres:</span>
+                                                                            <p className="text-surface-600 leading-relaxed">
+                                                                                {order.shipping_address.address_line1}<br />
+                                                                                {order.shipping_address.address_line2 && <>{order.shipping_address.address_line2}<br /></>}
+                                                                                {order.shipping_address.district} / {order.shipping_address.city}<br />
+                                                                                {order.shipping_address.postal_code}
+                                                                            </p>
+                                                                        </div>
+                                                                        <p className="pt-1"><span className="font-semibold text-surface-700">Kargo Firması:</span> <span className="badge bg-surface-100 text-surface-700">{order.shipping_method || '-'}</span></p>
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                                {/* Items Block */}
+                                                                <div>
+                                                                    <h4 className="text-xs font-bold text-surface-400 uppercase tracking-wider mb-3">Sipariş İçeriği ({order.items?.length || 0} Kalem)</h4>
+                                                                    <div className="space-y-3">
+                                                                        {order.items?.map((item) => (
+                                                                            <div key={item.id} className="flex items-center justify-between text-sm py-2 border-b border-surface-100 last:border-0">
+                                                                                <div className="flex flex-col">
+                                                                                    <span className="font-medium text-surface-800">{item.product_name}</span>
+                                                                                    <span className="text-xs text-surface-500">Renk: {item.selected_color}</span>
+                                                                                </div>
+                                                                                <div className="flex gap-4 text-right">
+                                                                                    <span className="font-semibold text-surface-700">{item.meters} metre</span>
+                                                                                    <span className="text-surface-500 w-20">{formatPrice(item.total_price)}</span>
+                                                                                </div>
+                                                                            </div>
+                                                                        ))}
+                                                                        {order.notes && (
+                                                                            <div className="mt-4 p-3 bg-amber-50 rounded-lg border border-amber-100 text-sm">
+                                                                                <span className="font-semibold text-amber-800 block mb-1">Müşteri Notu:</span>
+                                                                                <span className="text-amber-700">{order.notes}</span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </React.Fragment>
                                         ))}
                                         {orders.length === 0 && (
                                             <tr>
