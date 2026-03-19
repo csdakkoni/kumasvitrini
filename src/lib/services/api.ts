@@ -159,7 +159,14 @@ export async function createOrder(orderData: Omit<import('../types').Order, 'id'
 }
 
 export async function getOrders(): Promise<import('../types').Order[]> {
-    const { data, error } = await supabase
+    // Orders require service role key due to RLS policies
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabaseAdmin = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { data, error } = await supabaseAdmin
         .from('orders')
         .select(`
             *,
@@ -175,7 +182,13 @@ export async function getOrders(): Promise<import('../types').Order[]> {
 }
 
 export async function updateOrderStatus(orderId: string, status: import('../types').OrderStatus) {
-    const { error } = await supabase
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabaseAdmin = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { error } = await supabaseAdmin
         .from('orders')
         .update({ status })
         .eq('id', orderId);
@@ -185,3 +198,4 @@ export async function updateOrderStatus(orderId: string, status: import('../type
         throw error;
     }
 }
+
