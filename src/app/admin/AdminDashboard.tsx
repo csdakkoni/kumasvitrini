@@ -42,6 +42,30 @@ export default function AdminDashboard({ initialProducts: products, initialCateg
         }
     };
 
+    const generateUpsLabel = async (order: Order) => {
+        try {
+            const res = await fetch('/api/admin/shipping/ups', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(order)
+            });
+            const data = await res.json();
+            if (data.success && data.labelBase64) {
+                // Update local UI
+                setOrders(prev => prev.map(o => o.id === order.id ? { ...o, tracking_number: data.trackingNumber, status: 'shipped' } : o));
+                
+                // Show label in new tab
+                const blob = new Blob([Uint8Array.from(atob(data.labelBase64), c => c.charCodeAt(0))], { type: 'image/gif' });
+                const url = URL.createObjectURL(blob);
+                window.open(url, '_blank');
+            } else {
+                alert(`UPS Hatası: ${data.error}`);
+            }
+        } catch (err) {
+            alert('Bağlantı hatası.');
+        }
+    };
+
     return (
         <div className="min-h-screen bg-surface-100">
             {/* Admin Header */}
@@ -270,13 +294,30 @@ export default function AdminDashboard({ initialProducts: products, initialCateg
                                                     </select>
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
-                                                    <button
-                                                        className="p-1.5 text-surface-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                                                        title="Sipariş Detayı (Yakında)"
-                                                        onClick={() => alert(`Detay:\n\nKargo: ${order.shipping_method}\nAdres: ${order.shipping_address.city}/${order.shipping_address.district}\nKalemler: ${order.items?.length || 0} ürün\nNot: ${order.notes || 'Yok'}`)}
-                                                    >
-                                                        <Eye size={16} />
-                                                    </button>
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        {order.tracking_number ? (
+                                                            <span className="text-xs bg-indigo-50 text-indigo-700 px-2 py-1 rounded-md font-medium" title="Kargo Takip No">
+                                                                {order.tracking_number}
+                                                            </span>
+                                                        ) : order.shipping_method?.toLowerCase().includes('ups') ? (
+                                                            <button
+                                                                className="text-xs flex items-center gap-1 bg-amber-50 text-amber-700 hover:bg-amber-100 px-2 py-1 rounded-md font-medium transition-colors border border-amber-200"
+                                                                onClick={() => generateUpsLabel(order)}
+                                                                title="UPS Barkodu Oluştur"
+                                                            >
+                                                                <Truck size={14} />
+                                                                UPS Barkod
+                                                            </button>
+                                                        ) : null}
+
+                                                        <button
+                                                            className="p-1.5 text-surface-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                                                            title="Sipariş Detayı"
+                                                            onClick={() => alert(`Detay:\n\nKargo: ${order.shipping_method}\nAdres: ${order.shipping_address.city}/${order.shipping_address.district}\nKalemler: ${order.items?.length || 0} ürün\nNot: ${order.notes || 'Yok'}`)}
+                                                        >
+                                                            <Eye size={16} />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
