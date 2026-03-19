@@ -1,25 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 
-export async function POST(req: NextRequest) {
+async function handleCallback(token: string, reqUrl: string) {
+    const siteUrl = new URL(reqUrl).origin;
+
+    if (!token) {
+        return NextResponse.redirect(`${siteUrl}/sepet?error=no_token`);
+    }
+
     try {
-        // Iyzico sends a form-urlencoded POST after payment
-        const contentType = req.headers.get('content-type') || '';
-        let token = '';
-
-        if (contentType.includes('application/x-www-form-urlencoded')) {
-            const formData = await req.formData();
-            token = formData.get('token') as string;
-        } else {
-            const body = await req.json();
-            token = body.token;
-        }
-
-        if (!token) {
-            return NextResponse.redirect(new URL('/sepet?error=no_token', req.url));
-        }
-
-        // Retrieve payment result from Iyzico via raw HTTP (no npm package)
+        // Retrieve payment result from Iyzico via raw HTTP
         const apiKey = process.env.IYZICO_API_KEY!;
         const secretKey = process.env.IYZICO_SECRET_KEY!;
         const baseUrl = process.env.IYZICO_BASE_URL || 'https://sandbox-api.iyzipay.com';
@@ -54,7 +44,7 @@ export async function POST(req: NextRequest) {
 
         const retrieveResult = await iyzicoResponse.json();
 
-        // Use service role Supabase client for DB operations
+        // Use service role Supabase client
         const { createClient } = await import('@supabase/supabase-js');
         const supabaseAdmin = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -62,9 +52,8 @@ export async function POST(req: NextRequest) {
         );
 
         if (retrieveResult.status === 'success' && retrieveResult.paymentStatus === 'SUCCESS') {
-            const basketId = retrieveResult.basketId; // Our order_number
+            const basketId = retrieveResult.basketId;
 
-            // Get the order from DB
             const { data: orderData } = await supabaseAdmin
                 .from('orders')
                 .select('id')
@@ -72,7 +61,6 @@ export async function POST(req: NextRequest) {
                 .single();
 
             if (orderData) {
-                // Update payment status
                 await supabaseAdmin
                     .from('orders')
                     .update({
@@ -82,16 +70,12 @@ export async function POST(req: NextRequest) {
                     })
                     .eq('id', orderData.id);
 
-                // Redirect to success page
-                const siteUrl = new URL(req.url).origin;
                 return NextResponse.redirect(`${siteUrl}/siparis-basarili?order=${orderData.id}`);
             } else {
-                const siteUrl = new URL(req.url).origin;
                 return NextResponse.redirect(`${siteUrl}/sepet?error=order_not_found`);
             }
         } else {
             console.error('Iyzico Payment Failed:', JSON.stringify(retrieveResult));
-            // Mark as failed if we can find the order
             const basketId = retrieveResult.basketId;
             if (basketId) {
                 await supabaseAdmin
@@ -99,13 +83,38 @@ export async function POST(req: NextRequest) {
                     .update({ payment_status: 'failed' })
                     .eq('order_number', basketId);
             }
-            const siteUrl = new URL(req.url).origin;
             return NextResponse.redirect(`${siteUrl}/sepet?error=payment_failed`);
         }
 
     } catch (error: any) {
         console.error('Iyzico Callback Error:', error);
-        const siteUrl = new URL(req.url).origin;
         return NextResponse.redirect(`${siteUrl}/sepet?error=system_error`);
     }
 }
+
+// iyzico sends POST with form-urlencoded body
+export async function POST(req: NextRequest) {
+    const contentType = req.headers.get('content-type') || '';
+    let token = '';
+
+    if (contentType.includes('application/x-www-form-urlencoded')) {
+        const formData = await req.formData();
+        token = formData.get('token') as string;
+    } else {
+        try {
+            const body = await req.json();
+            token = body.token;
+        } catch {
+            token = '';
+        }
+    }
+
+    return handleCallback(token, req.url);
+}
+
+// Some iyzico flows redirect as GET with token in query params
+export async function GET(req: NextRequest) {
+    const token = req.nextUrl.searchParams.get('token') || '';
+    return handleCallback(token, req.url);
+}
+
