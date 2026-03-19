@@ -247,13 +247,13 @@ export default function AdminDashboard({ initialProducts: products, initialCateg
                                                             >
                                                                 <Eye size={16} />
                                                             </Link>
-                                                            <button
+                                                            <Link
+                                                                href={`/admin/urunler/${product.id}/duzenle`}
                                                                 className="p-1.5 text-surface-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                                                                title="Düzenle (Yakında)"
-                                                                disabled
+                                                                title="Düzenle"
                                                             >
                                                                 <Edit size={16} />
-                                                            </button>
+                                                            </Link>
                                                         </div>
                                                     </td>
                                                 </tr>
