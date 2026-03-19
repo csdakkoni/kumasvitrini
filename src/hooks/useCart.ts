@@ -68,7 +68,7 @@ export function useCart() {
         setItems((prev) =>
             prev.map((item) =>
                 item.product.id === productId && item.selectedColor === selectedColor
-                    ? { ...item, meters: Math.max(item.product.min_order_meters, meters) }
+                    ? { ...item, meters: Math.round(Math.max(item.product.min_order_meters, meters) * 10) / 10 }
                     : item
             )
         );

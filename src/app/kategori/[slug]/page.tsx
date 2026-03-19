@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getCategories, getCategoryBySlug, getProducts } from '@/lib/services/api';
-import { CategoryProductGrid } from './CategoryProductGrid';
+import { ProductGridWithFilters } from '@/components/product/ProductGridWithFilters';
 
 export const revalidate = 3600; // 1 hour ISR
 
@@ -55,9 +55,9 @@ export default async function CategoryPage({
                     <p className="text-sm text-surface-400 mt-2">{categoryProducts.length} ürün bulundu</p>
                 </div>
 
-                {/* Products Grid */}
+                {/* Products With Filters */}
                 {categoryProducts.length > 0 ? (
-                    <CategoryProductGrid products={categoryProducts} />
+                    <ProductGridWithFilters initialProducts={categoryProducts} />
                 ) : (
                     <div className="text-center py-20">
                         <p className="text-surface-400 text-lg mb-4">Bu kategoride henüz ürün bulunmuyor.</p>

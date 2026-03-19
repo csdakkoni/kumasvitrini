@@ -124,7 +124,7 @@ export default function CartPage() {
                                             <div className="flex items-center justify-between mt-3">
                                                 <div className="flex items-center border border-surface-200 rounded-lg overflow-hidden">
                                                     <button
-                                                        onClick={() => updateMeters(item.product.id, item.meters - 0.5, item.selectedColor)}
+                                                        onClick={() => updateMeters(item.product.id, item.meters - 0.1, item.selectedColor)}
                                                         className="p-1.5 hover:bg-surface-100 transition-colors"
                                                         disabled={item.meters <= item.product.min_order_meters}
                                                     >
@@ -134,7 +134,7 @@ export default function CartPage() {
                                                         {item.meters}m
                                                     </span>
                                                     <button
-                                                        onClick={() => updateMeters(item.product.id, item.meters + 0.5, item.selectedColor)}
+                                                        onClick={() => updateMeters(item.product.id, item.meters + 0.1, item.selectedColor)}
                                                         className="p-1.5 hover:bg-surface-100 transition-colors"
                                                     >
                                                         <Plus size={14} />

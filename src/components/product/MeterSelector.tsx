@@ -21,13 +21,13 @@ export function MeterSelector({
     const [inputValue, setInputValue] = useState(value.toString());
 
     const handleDecrement = () => {
-        const newVal = Math.max(minMeters, value - 0.5);
+        const newVal = Math.round((Math.max(minMeters, value - 0.1)) * 10) / 10;
         onChange(newVal);
         setInputValue(newVal.toString());
     };
 
     const handleIncrement = () => {
-        const newVal = Math.min(maxMeters, value + 0.5);
+        const newVal = Math.round((Math.min(maxMeters, value + 0.1)) * 10) / 10;
         onChange(newVal);
         setInputValue(newVal.toString());
     };
@@ -50,8 +50,8 @@ export function MeterSelector({
             onChange(maxMeters);
             setInputValue(maxMeters.toString());
         } else {
-            // Round to nearest 0.5
-            const rounded = Math.round(parsed * 2) / 2;
+            // Round to nearest 0.1 (10cm)
+            const rounded = Math.round(parsed * 10) / 10;
             onChange(rounded);
             setInputValue(rounded.toString());
         }
