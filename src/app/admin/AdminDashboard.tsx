@@ -63,10 +63,18 @@ export default function AdminDashboard({ initialProducts: products, initialCateg
 
     const handleStatusChage = async (orderId: string, newStatus: OrderStatus) => {
         try {
-            await updateOrderStatus(orderId, newStatus);
+            const res = await fetch('/api/admin/orders/status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderId, status: newStatus }),
+            });
+            
+            if (!res.ok) throw new Error('Update failed');
+            
             setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
             router.refresh();
         } catch (error) {
+            console.error(error);
             alert('Durum güncellenirken hata oluştu');
         }
     };
