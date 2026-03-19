@@ -332,8 +332,8 @@ export default function CheckoutPage() {
                                                             } else {
                                                                 alert(data.error || 'Ödeme formu başlatılamadı.');
                                                             }
-                                                        } catch (error) {
-                                                            alert('Bağlantı hatası.');
+                                                        } catch (error: any) {
+                                                            alert(`Hata: ${error?.message || 'Bağlantı hatası'}`);
                                                         } finally {
                                                             setIsSubmitting(false);
                                                         }
