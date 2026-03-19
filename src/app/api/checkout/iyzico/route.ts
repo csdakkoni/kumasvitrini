@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createOrder } from '@/lib/services/api';
 
 export async function POST(req: NextRequest) {
     let step = 'init';
@@ -35,17 +34,56 @@ export async function POST(req: NextRequest) {
         orderData.order_number = `KV-${Date.now()}`;
         orderData.payment_method = 'iyzico';
 
-        // Step 2: Create order in DB
+        // Step 2: Create order in DB using service role key (bypasses RLS)
         step = 'db_insert';
-        const orderRes = await createOrder(orderData, items);
-        
-        if (!orderRes || !orderRes.id) {
+        const { createClient } = await import('@supabase/supabase-js');
+        const supabaseAdmin = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+
+        const { data: order, error: orderError } = await supabaseAdmin
+            .from('orders')
+            .insert({
+                order_number: orderData.order_number,
+                customer_name: orderData.customer_name,
+                customer_phone: orderData.customer_phone,
+                customer_email: orderData.customer_email || null,
+                status: orderData.status || 'pending',
+                subtotal: orderData.subtotal,
+                shipping_cost: orderData.shipping_cost,
+                total_amount: orderData.total_amount,
+                shipping_address: orderData.shipping_address,
+                shipping_method: orderData.shipping_method,
+                payment_status: orderData.payment_status || 'pending',
+                payment_method: orderData.payment_method || 'iyzico',
+                notes: orderData.notes || null,
+            })
+            .select()
+            .single();
+
+        if (orderError || !order) {
+            console.error('DB Insert Error:', orderError);
             return NextResponse.json({ 
                 success: false, 
-                error: 'Failed to create order in database',
+                error: `DB Error: ${orderError?.message || 'Unknown'}`,
                 step 
             }, { status: 500 });
         }
+
+        // Insert order items
+        const orderItemsToInsert = items.map((item: any) => ({
+            order_id: order.id,
+            product_id: item.product_id || null,
+            product_name: item.product_name || 'Ürün',
+            meters: item.meters,
+            unit_price: item.unit_price,
+            total_price: item.total_price
+        }));
+
+        await supabaseAdmin.from('order_items').insert(orderItemsToInsert);
+
+        const orderRes = { id: order.id };
 
         // Step 3: Prepare iyzico request
         step = 'prepare_iyzico';
