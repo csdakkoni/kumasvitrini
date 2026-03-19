@@ -1,10 +1,9 @@
-'use client';
-
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import Image from 'next/image';
 import { Truck, Shield, RotateCcw, Headphones, ArrowRight, Scissors } from 'lucide-react';
 import { categories, getFeaturedProducts } from '@/lib/mock-data';
 import { ProductCard } from '@/components/product/ProductCard';
+import { FadeIn } from '@/components/ui/FadeIn';
 import { formatPrice, FREE_SHIPPING_THRESHOLD } from '@/lib/utils';
 
 export default function HomePage() {
@@ -22,11 +21,7 @@ export default function HomePage() {
 
                 <div className="container-main relative z-10 py-20 sm:py-28 lg:py-36">
                     <div className="max-w-2xl">
-                        <motion.div
-                            initial={{ opacity: 0, y: 30 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.6 }}
-                        >
+                        <FadeIn delay={0} yOffset={30} duration={0.6}>
                             <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full text-sm mb-6">
                                 <Scissors size={16} className="text-primary-400" />
                                 <span>Premium Kalite Kumaşlar</span>
@@ -54,7 +49,7 @@ export default function HomePage() {
                                     İletişime Geç
                                 </Link>
                             </div>
-                        </motion.div>
+                        </FadeIn>
                     </div>
                 </div>
 
@@ -100,14 +95,18 @@ export default function HomePage() {
 
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
                         {categories.map((cat, i) => (
-                            <motion.div
-                                key={cat.id}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.4, delay: i * 0.08 }}
-                            >
+                                <FadeIn
+                                    key={cat.id}
+                                    delay={i * 0.08}
+                                >
                                 <Link href={`/kategori/${cat.slug}`} className="category-card block group">
-                                    <img src={`/images/categories/${cat.slug}.png`} alt={cat.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                    <Image 
+                                        src={`/images/categories/${cat.slug}.png`} 
+                                        alt={cat.name} 
+                                        fill
+                                        sizes="(max-width: 640px) 50vw, 33vw"
+                                        className="object-cover group-hover:scale-105 transition-transform duration-500" 
+                                    />
                                     <div className="absolute inset-0 z-10 flex flex-col justify-end p-4 sm:p-6">
                                         <h3 className="text-white font-bold text-lg sm:text-xl" style={{ fontFamily: 'var(--font-display)' }}>
                                             {cat.name}
@@ -115,7 +114,7 @@ export default function HomePage() {
                                         <p className="text-white/70 text-sm mt-1 line-clamp-2 hidden sm:block">{cat.description}</p>
                                     </div>
                                 </Link>
-                            </motion.div>
+                                </FadeIn>
                         ))}
                     </div>
                 </div>

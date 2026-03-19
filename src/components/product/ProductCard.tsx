@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Product } from '@/lib/types';
 import { formatPrice, getDiscountPercent } from '@/lib/utils';
@@ -28,10 +29,12 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
                 {/* Image container */}
                 <div className="relative aspect-[4/5] bg-surface-100 overflow-hidden">
                     {/* Product image */}
-                    <img
+                    <Image
                         src={product.images[0]}
                         alt={product.name}
-                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        fill
+                        sizes="(max-width: 768px) 50vw, 20vw"
+                        className="object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                     {/* Color swatch preview */}
                     <div className="absolute bottom-3 left-3 flex gap-1.5 z-10">
