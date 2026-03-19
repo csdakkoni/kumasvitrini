@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { isAdminAuthenticated } from '@/lib/admin-auth';
 import AdminDashboard from './AdminDashboard';
+import { getProducts, getCategories, getOrders } from '@/lib/services/api';
 
 export default async function AdminPage() {
     const isAuthenticated = await isAdminAuthenticated();
@@ -9,5 +10,11 @@ export default async function AdminPage() {
         redirect('/admin/giris');
     }
 
-    return <AdminDashboard />;
+    const [products, categories, orders] = await Promise.all([
+        getProducts(),
+        getCategories(),
+        getOrders(),
+    ]);
+
+    return <AdminDashboard initialProducts={products} initialCategories={categories} initialOrders={orders} />;
 }

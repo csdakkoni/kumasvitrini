@@ -92,3 +92,78 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
     }
     return data;
 }
+
+export async function createOrder(orderData: Omit<import('../types').Order, 'id' | 'created_at' | 'items'>, items: Omit<import('../types').OrderItem, 'id' | 'order_id'>[]): Promise<{ id: string } | null> {
+    // 1. Insert Order
+    const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+            customer_name: orderData.customer_name,
+            customer_phone: orderData.customer_phone,
+            customer_email: orderData.customer_email,
+            status: orderData.status,
+            total_amount: orderData.total_amount,
+            shipping_cost: orderData.shipping_cost,
+            shipping_address: orderData.shipping_address,
+            shipping_method: orderData.shipping_method,
+            payment_status: orderData.payment_status,
+            notes: orderData.notes
+        })
+        .select()
+        .single();
+
+    if (orderError || !order) {
+        console.error('Error creating order:', orderError);
+        return null;
+    }
+
+    // 2. Insert Order Items
+    const orderItemsToInsert = items.map(item => ({
+        order_id: order.id,
+        product_id: item.product_id,
+        product_name: item.product_name,
+        meters: item.meters,
+        unit_price: item.unit_price,
+        total_price: item.total_price
+    }));
+
+    const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItemsToInsert);
+
+    if (itemsError) {
+        console.error('Error creating order items:', itemsError);
+        // We should ideally rollback or use an RPC function for transactions,
+        // but for now, we just return the order ID and log the error.
+    }
+
+    return { id: order.id };
+}
+
+export async function getOrders(): Promise<import('../types').Order[]> {
+    const { data, error } = await supabase
+        .from('orders')
+        .select(`
+            *,
+            items:order_items(*)
+        `)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('Error fetching orders:', error);
+        return [];
+    }
+    return data || [];
+}
+
+export async function updateOrderStatus(orderId: string, status: import('../types').OrderStatus) {
+    const { error } = await supabase
+        .from('orders')
+        .update({ status })
+        .eq('id', orderId);
+
+    if (error) {
+        console.error('Error updating order status:', error);
+        throw error;
+    }
+}

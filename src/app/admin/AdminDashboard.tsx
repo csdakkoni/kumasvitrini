@@ -3,14 +3,22 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { products, categories, getProductCategory } from '@/lib/mock-data';
 import { formatPrice } from '@/lib/utils';
-import { Package, Tag, TrendingUp, AlertTriangle, Edit, Eye, Plus, BarChart3, LogOut } from 'lucide-react';
+import { Package, Tag, TrendingUp, AlertTriangle, Edit, Eye, Plus, BarChart3, LogOut, ShoppingBag, CheckCircle, Clock, XCircle, Truck } from 'lucide-react';
+import { Product, Category, Order, OrderStatus } from '@/lib/types';
+import { updateOrderStatus } from '@/lib/services/api';
 
-export default function AdminDashboard() {
+interface AdminDashboardProps {
+    initialProducts: Product[];
+    initialCategories: Category[];
+    initialOrders: Order[];
+}
+
+export default function AdminDashboard({ initialProducts: products, initialCategories: categories, initialOrders }: AdminDashboardProps) {
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'categories'>('dashboard');
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'products' | 'categories'>('dashboard');
     const [loggingOut, setLoggingOut] = useState(false);
+    const [orders, setOrders] = useState<Order[]>(initialOrders);
 
     const totalProducts = products.filter(p => p.is_active).length;
     const totalStock = products.reduce((sum, p) => sum + p.stock_meters, 0);
@@ -22,6 +30,16 @@ export default function AdminDashboard() {
         await fetch('/api/admin/logout', { method: 'POST' });
         router.push('/admin/giris');
         router.refresh();
+    };
+
+    const handleStatusChage = async (orderId: string, newStatus: OrderStatus) => {
+        try {
+            await updateOrderStatus(orderId, newStatus);
+            setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+            router.refresh();
+        } catch (error) {
+            alert('Durum güncellenirken hata oluştu');
+        }
     };
 
     return (
@@ -53,6 +71,7 @@ export default function AdminDashboard() {
                 <div className="flex gap-1 bg-white rounded-xl p-1 shadow-sm mb-8 w-fit">
                     {[
                         { id: 'dashboard' as const, label: 'Dashboard', icon: BarChart3 },
+                        { id: 'orders' as const, label: 'Siparişler', icon: ShoppingBag },
                         { id: 'products' as const, label: 'Ürünler', icon: Package },
                         { id: 'categories' as const, label: 'Kategoriler', icon: Tag },
                     ].map((tab) => (
@@ -135,7 +154,7 @@ export default function AdminDashboard() {
                                     </thead>
                                     <tbody>
                                         {products.map((product) => {
-                                            const cat = getProductCategory(product);
+                                            const cat = categories.find(c => c.id === product.category_id);
                                             return (
                                                 <tr key={product.id} className="border-b border-surface-50 hover:bg-surface-50 transition-colors">
                                                     <td className="px-4 py-3">
@@ -187,6 +206,87 @@ export default function AdminDashboard() {
                                                 </tr>
                                             );
                                         })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Orders Tab */}
+                {activeTab === 'orders' && (
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-surface-800">{orders.length} Sipariş</h2>
+                        </div>
+                        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead>
+                                        <tr className="border-b border-surface-100">
+                                            <th className="text-left text-xs font-semibold text-surface-500 uppercase tracking-wider px-4 py-3">Sipariş ID</th>
+                                            <th className="text-left text-xs font-semibold text-surface-500 uppercase tracking-wider px-4 py-3">Müşteri</th>
+                                            <th className="text-left text-xs font-semibold text-surface-500 uppercase tracking-wider px-4 py-3">Tarih</th>
+                                            <th className="text-right text-xs font-semibold text-surface-500 uppercase tracking-wider px-4 py-3">Tutar</th>
+                                            <th className="text-center text-xs font-semibold text-surface-500 uppercase tracking-wider px-4 py-3">Durum</th>
+                                            <th className="text-right text-xs font-semibold text-surface-500 uppercase tracking-wider px-4 py-3">İşlem</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {orders.map((order) => (
+                                            <tr key={order.id} className="border-b border-surface-50 hover:bg-surface-50 transition-colors">
+                                                <td className="px-4 py-3 text-sm font-medium text-surface-800">
+                                                    #{order.id.split('-')[0].toUpperCase()}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="text-sm font-medium text-surface-800">{order.customer_name}</div>
+                                                    <div className="text-xs text-surface-400">{order.customer_phone}</div>
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-surface-600">
+                                                    {new Date(order.created_at).toLocaleDateString('tr-TR')}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm font-bold text-primary-600 text-right">
+                                                    {formatPrice(order.total_amount)}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                    <select
+                                                        value={order.status}
+                                                        onChange={(e) => handleStatusChage(order.id, e.target.value as OrderStatus)}
+                                                        className={`text-xs font-semibold rounded-lg px-2 py-1 outline-none border cursor-pointer
+                                                            ${order.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                                            order.status === 'confirmed' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                                            order.status === 'preparing' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                                                            order.status === 'shipped' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
+                                                            order.status === 'delivered' ? 'bg-green-50 text-green-700 border-green-200' :
+                                                            'bg-red-50 text-red-700 border-red-200'
+                                                        }`}
+                                                    >
+                                                        <option value="pending">Bekliyor</option>
+                                                        <option value="confirmed">Onaylandı</option>
+                                                        <option value="preparing">Hazırlanıyor</option>
+                                                        <option value="shipped">Kargoya Verildi</option>
+                                                        <option value="delivered">Teslim Edildi</option>
+                                                        <option value="cancelled">İptal Edildi</option>
+                                                    </select>
+                                                </td>
+                                                <td className="px-4 py-3 text-right">
+                                                    <button
+                                                        className="p-1.5 text-surface-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                                                        title="Sipariş Detayı (Yakında)"
+                                                        onClick={() => alert(`Detay:\n\nKargo: ${order.shipping_method}\nAdres: ${order.shipping_address.city}/${order.shipping_address.district}\nKalemler: ${order.items?.length || 0} ürün\nNot: ${order.notes || 'Yok'}`)}
+                                                    >
+                                                        <Eye size={16} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {orders.length === 0 && (
+                                            <tr>
+                                                <td colSpan={6} className="px-4 py-8 text-center text-surface-400">
+                                                    Henüz sipariş bulunmuyor.
+                                                </td>
+                                            </tr>
+                                        )}
                                     </tbody>
                                 </table>
                             </div>
