@@ -113,18 +113,19 @@ export async function createOrder(orderData: Omit<import('../types').Order, 'id'
     const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
+            order_number: `KV-${Date.now()}`,
             customer_name: orderData.customer_name,
             customer_phone: orderData.customer_phone,
             customer_email: orderData.customer_email || null,
             status: orderData.status,
+            subtotal: orderData.subtotal,
             shipping_cost: orderData.shipping_cost,
             total_amount: orderData.total_amount,
             shipping_address: orderData.shipping_address,
             shipping_method: orderData.shipping_method,
             payment_status: orderData.payment_status,
-            notes: typeof orderData.payment_method !== 'undefined' 
-                   ? `[Ödeme: ${orderData.payment_method}] ${orderData.notes || ''}`.trim()
-                   : orderData.notes || null,
+            payment_method: orderData.payment_method || 'whatsapp',
+            notes: orderData.notes || null,
         })
         .select()
         .single();
