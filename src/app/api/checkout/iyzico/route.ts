@@ -1,20 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 
-// ---- iyzico IYZWSv2 Auth Helper ----
-function generateAuthorizationHeader(apiKey: string, secretKey: string, requestBody: string): string {
-    const randomHeaderValue = crypto.randomUUID().replace(/-/g, '').substring(0, 8) + String(Date.now());
-    const uriPath = '/payment/iyzipos/checkoutform/initialize/auth/ecom';
-
-    const hashStr = randomHeaderValue + uriPath + requestBody;
+// ---- iyzico IYZWSv2 Auth Helper (matches iyzipay npm source exactly) ----
+function generateAuthorizationHeader(apiKey: string, secretKey: string, uriPath: string, requestBody: string, randomString: string): string {
+    const hashStr = randomString + uriPath + requestBody;
     const signature = crypto
         .createHmac('sha256', secretKey)
         .update(hashStr)
-        .digest('base64');
+        .digest('hex');
 
     const authorizationParams = [
         'apiKey:' + apiKey,
-        'randomHeaderValue:' + randomHeaderValue,
+        'randomKey:' + randomString,
         'signature:' + signature,
     ].join('&');
 
@@ -165,10 +162,12 @@ export async function POST(req: NextRequest) {
 
         // Step 4: Call iyzico REST API directly (no npm package needed)
         step = 'iyzico_call';
+        const uriPath = '/payment/iyzipos/checkoutform/initialize/auth/ecom';
         const requestBodyStr = JSON.stringify(iyzicoPayload);
-        const authorization = generateAuthorizationHeader(apiKey, secretKey, requestBodyStr);
+        const randomString = String(process.hrtime.bigint()) + Math.random().toString(8).slice(2);
+        const authorization = generateAuthorizationHeader(apiKey, secretKey, uriPath, requestBodyStr, randomString);
 
-        const iyzicoUrl = `${baseUrl}/payment/iyzipos/checkoutform/initialize/auth/ecom`;
+        const iyzicoUrl = `${baseUrl}${uriPath}`;
 
         const iyzicoResponse = await fetch(iyzicoUrl, {
             method: 'POST',
@@ -176,6 +175,8 @@ export async function POST(req: NextRequest) {
                 'Content-Type': 'application/json',
                 'Authorization': authorization,
                 'Accept': 'application/json',
+                'x-iyzi-rnd': randomString,
+                'x-iyzi-client-version': 'iyzipay-node-2.0.65',
             },
             body: requestBodyStr,
         });
