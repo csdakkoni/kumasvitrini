@@ -113,19 +113,18 @@ export async function createOrder(orderData: Omit<import('../types').Order, 'id'
     const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
-            order_number: `KV-${Date.now()}`,
             customer_name: orderData.customer_name,
             customer_phone: orderData.customer_phone,
             customer_email: orderData.customer_email || null,
             status: orderData.status,
-            subtotal: orderData.subtotal,
             shipping_cost: orderData.shipping_cost,
             total_amount: orderData.total_amount,
             shipping_address: orderData.shipping_address,
             shipping_method: orderData.shipping_method,
             payment_status: orderData.payment_status,
-            payment_method: 'whatsapp',
-            notes: orderData.notes || null,
+            notes: typeof orderData.payment_method !== 'undefined' 
+                   ? `[Ödeme: ${orderData.payment_method}] ${orderData.notes || ''}`.trim()
+                   : orderData.notes || null,
         })
         .select()
         .single();
@@ -139,9 +138,7 @@ export async function createOrder(orderData: Omit<import('../types').Order, 'id'
     const orderItemsToInsert = items.map(item => ({
         order_id: order.id,
         product_id: item.product_id,
-        product_name: item.product_name,
-        product_slug: item.product_slug,
-        selected_color: item.selected_color,
+        product_name: item.selected_color ? `${item.product_name} (${item.selected_color})` : item.product_name,
         meters: item.meters,
         unit_price: item.unit_price,
         total_price: item.total_price
