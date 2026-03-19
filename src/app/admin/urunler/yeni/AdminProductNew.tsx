@@ -60,6 +60,9 @@ export default function AdminProductNew() {
     const [saveResult, setSaveResult] = useState<'success' | 'error' | null>(null);
     const [errorMessage, setErrorMessage] = useState('');
     const [categories, setCategories] = useState<Category[]>([]);
+    
+    // Image Upload State
+    const [isUploading, setIsUploading] = useState(false);
 
     useEffect(() => {
         fetch('/api/admin/categories')
@@ -100,6 +103,41 @@ export default function AdminProductNew() {
             ...prev,
             colors: prev.colors.map((c, i) => (i === index ? { ...c, [field]: value } : c)),
         }));
+    };
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const res = await fetch('/api/admin/upload', {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await res.json();
+            
+            if (res.ok && data.url) {
+                setForm(prev => ({
+                    ...prev,
+                    images: [...prev.images, data.url]
+                }));
+            } else {
+                alert(data.error || 'Görsel yüklenemedi');
+            }
+        } catch (error) {
+            alert('Görsel yüklenirken bir hata oluştu');
+        } finally {
+            setIsUploading(false);
+            if (e.target) e.target.value = ''; // Reset input
+        }
+    };
+    
+    const removeImage = (index: number) => {
+        setForm(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -227,6 +265,57 @@ export default function AdminProductNew() {
                                 onChange={(e) => updateField('description', e.target.value)}
                             />
                         </div>
+                    </div>
+
+                    {/* Images */}
+                    <div className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-surface-800" style={{ fontFamily: 'var(--font-display)' }}>
+                                Ürün Görselleri
+                            </h2>
+                            <label className={`btn btn-secondary btn-sm ${isUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                                <input 
+                                    type="file" 
+                                    className="hidden" 
+                                    accept="image/*" 
+                                    onChange={handleImageUpload} 
+                                    disabled={isUploading} 
+                                />
+                                {isUploading ? (
+                                    <span className="flex items-center gap-2">
+                                        <span className="w-3 h-3 border-2 border-surface-400 border-t-transparent rounded-full animate-spin" />
+                                        Yükleniyor...
+                                    </span>
+                                ) : (
+                                    <>
+                                        <Upload size={14} />
+                                        Görsel Yükle
+                                    </>
+                                )}
+                            </label>
+                        </div>
+                        
+                        {form.images.length === 0 ? (
+                            <div className="text-center py-8 border-2 border-dashed border-surface-200 rounded-xl text-surface-400">
+                                Henüz görsel yüklenmedi.
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                {form.images.map((url, i) => (
+                                    <div key={i} className="relative aspect-square rounded-xl bg-surface-100 border border-surface-200 overflow-hidden group">
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img src={url} alt={`Görsel ${i + 1}`} className="w-full h-full object-cover" />
+                                        <button 
+                                            type="button"
+                                            onClick={() => removeImage(i)}
+                                            className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Pricing */}
