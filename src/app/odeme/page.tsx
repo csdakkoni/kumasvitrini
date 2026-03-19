@@ -273,18 +273,65 @@ export default function CheckoutPage() {
                                     </label>
                                 </div>
 
-                                {/* iyzico placeholder */}
-                                <div className="border-2 border-dashed border-surface-200 rounded-xl p-8 text-center">
-                                    <Lock size={32} className="mx-auto text-surface-300 mb-3" />
-                                    <p className="text-surface-500 font-medium mb-1">Güvenli Ödeme</p>
-                                    <p className="text-sm text-surface-400 mb-4">
-                                        iyzico altyapısı ile güvenli ödeme.<br />
-                                        Kredi kartı, banka kartı ve sanal kart ile ödeme yapabilirsiniz.
-                                    </p>
-                                    <div className="bg-primary-50 rounded-lg p-4 text-sm text-primary-700 mb-4">
-                                        ⚙️ iyzico entegrasyonu aktifleştirildiğinde burada ödeme formu görünecek.
+                                {/* Iyzico Form */}
+                                {paymentMethod === 'credit_card' && (
+                                    <div className="border-t border-surface-100 pt-5">
+                                        {!iyzicoFormContent ? (
+                                            <div className="space-y-4">
+                                                <p className="text-sm text-surface-500 text-center">
+                                                    iyzico altyapısı ile kredi kartı veya banka kartınızla güvenle ödeme yapabilirsiniz.
+                                                </p>
+                                                <button
+                                                    onClick={async () => {
+                                                        if (isSubmitting) return;
+                                                        setIsSubmitting(true);
+                                                        try {
+                                                            const res = await fetch('/api/checkout/iyzico', {
+                                                                method: 'POST',
+                                                                headers: { 'Content-Type': 'application/json' },
+                                                                body: JSON.stringify({
+                                                                    items: items.map(i => ({
+                                                                        ...i.product,
+                                                                        meters: i.meters,
+                                                                        selectedColor: i.selectedColor || 'Standart'
+                                                                    })),
+                                                                    shippingOption,
+                                                                    formData
+                                                                })
+                                                            });
+                                                            const data = await res.json();
+                                                            if (res.ok && data.formContent) {
+                                                                setIyzicoFormContent(data.formContent);
+                                                            } else {
+                                                                alert(data.error || 'Ödeme formu başlatılamadı.');
+                                                            }
+                                                        } catch (error) {
+                                                            alert('Bağlantı hatası.');
+                                                        } finally {
+                                                            setIsSubmitting(false);
+                                                        }
+                                                    }}
+                                                    disabled={isSubmitting}
+                                                    className="btn btn-primary w-full btn-lg relative"
+                                                >
+                                                    {isSubmitting ? (
+                                                         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                    ) : (
+                                                        <>
+                                                            <Lock size={18} />
+                                                            Güvenli Ödemeye Geç
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="w-full">
+                                                <div id="iyzipay-checkout-form" className="responsive" />
+                                                <div dangerouslySetInnerHTML={{ __html: iyzicoFormContent }} />
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
+                                )}
 
                                 {/* WhatsApp fallback */}
                                 {paymentMethod === 'transfer' && (
