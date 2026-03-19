@@ -256,17 +256,22 @@ export default function CheckoutPage() {
                                             if (isSubmitting) return;
                                             setIsSubmitting(true);
                                             
+                                            const subtotal = items.reduce((total, item) => total + (item.product.price_per_meter * item.meters), 0);
+
                                             // 1. Create Order obj
                                             const orderData = {
+                                                order_number: `KV-${Date.now()}`,
                                                 customer_name: formData.fullName,
                                                 customer_phone: formData.phone,
                                                 customer_email: formData.email,
                                                 status: 'pending' as const,
+                                                subtotal: subtotal,
                                                 total_amount: grandTotal,
                                                 shipping_cost: shippingCost,
                                                 shipping_method: shippingOption.name,
                                                 notes: formData.notes,
                                                 payment_status: 'pending' as const,
+                                                payment_method: 'whatsapp',
                                                 shipping_address: {
                                                     full_name: formData.fullName,
                                                     phone: formData.phone,
@@ -280,6 +285,8 @@ export default function CheckoutPage() {
                                             const orderItems = items.map(i => ({
                                                 product_id: i.product.id,
                                                 product_name: i.product.name,
+                                                product_slug: i.product.slug,
+                                                selected_color: i.product.colors[0]?.name || 'Standart',
                                                 meters: i.meters,
                                                 unit_price: i.product.price_per_meter,
                                                 total_price: i.meters * i.product.price_per_meter

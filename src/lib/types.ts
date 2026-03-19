@@ -55,20 +55,25 @@ export interface CartState {
 export interface Order {
   id: string;
   user_id?: string;
+  order_number: string;
   customer_name: string;
   customer_phone: string;
   customer_email: string;
   status: OrderStatus;
+  subtotal: number;
   total_amount: number;
   shipping_cost: number;
   shipping_address: ShippingAddress;
   shipping_method: string;
   tracking_number?: string;
   payment_status: PaymentStatus;
+  payment_method: string;
   payment_id?: string;
+  iyzico_token?: string;
   notes?: string;
   items: OrderItem[];
   created_at: string;
+  updated_at?: string;
 }
 
 export interface OrderItem {
@@ -76,9 +81,12 @@ export interface OrderItem {
   order_id: string;
   product_id: string;
   product_name: string;
+  product_slug: string;
+  selected_color: string;
   meters: number;
   unit_price: number;
   total_price: number;
+  created_at?: string;
 }
 
 export interface ShippingAddress {
