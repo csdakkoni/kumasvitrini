@@ -14,11 +14,40 @@ interface AdminDashboardProps {
     initialOrders: Order[];
 }
 
-export default function AdminDashboard({ initialProducts: products, initialCategories: categories, initialOrders }: AdminDashboardProps) {
+export default function AdminDashboard({ initialProducts: products, initialCategories, initialOrders }: AdminDashboardProps) {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'products' | 'categories'>('dashboard');
     const [loggingOut, setLoggingOut] = useState(false);
     const [orders, setOrders] = useState<Order[]>(initialOrders);
+    const [categories, setCategories] = useState<Category[]>(initialCategories);
+    
+    // Category Modal State
+    const [showCategoryModal, setShowCategoryModal] = useState(false);
+    const [isSavingCategory, setIsSavingCategory] = useState(false);
+    const [newCategory, setNewCategory] = useState({
+        name: '',
+        slug: '',
+        description: '',
+        image_url: '',
+        sort_order: 0
+    });
+
+    const handleAddCategory = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSavingCategory(true);
+        try {
+            const { createCategory } = await import('@/lib/services/api');
+            const data = await createCategory(newCategory);
+            setCategories(prev => [...prev, data]);
+            setShowCategoryModal(false);
+            setNewCategory({ name: '', slug: '', description: '', image_url: '', sort_order: 0 });
+            router.refresh();
+        } catch (error) {
+            alert('Kategori eklenirken hata oluştu. Lütfen tekrar deneyin.');
+        } finally {
+            setIsSavingCategory(false);
+        }
+    };
 
     const totalProducts = products.filter(p => p.is_active).length;
     const totalStock = products.reduce((sum, p) => sum + p.stock_meters, 0);
@@ -337,28 +366,116 @@ export default function AdminDashboard({ initialProducts: products, initialCateg
 
                 {/* Categories */}
                 {activeTab === 'categories' && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {categories.map((cat) => {
-                            const productCount = products.filter(p => p.category_id === cat.id && p.is_active).length;
-                            return (
-                                <div key={cat.id} className="bg-white rounded-xl p-6 shadow-sm">
-                                    <div className="flex items-start justify-between mb-3">
-                                        <h3 className="font-semibold text-surface-800">{cat.name}</h3>
-                                        <span className="badge bg-primary-100 text-primary-700">{productCount} ürün</span>
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-surface-800">{categories.length} Kategori</h2>
+                            <button 
+                                onClick={() => setShowCategoryModal(true)}
+                                className="btn btn-primary btn-sm"
+                            >
+                                <Plus size={16} />
+                                Yeni Kategori Ekle
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {categories.map((cat) => {
+                                const productCount = products.filter(p => p.category_id === cat.id && p.is_active).length;
+                                return (
+                                    <div key={cat.id} className="bg-white rounded-xl p-6 shadow-sm">
+                                        <div className="flex items-start justify-between mb-3">
+                                            <h3 className="font-semibold text-surface-800">{cat.name}</h3>
+                                            <span className="badge bg-primary-100 text-primary-700">{productCount} ürün</span>
+                                        </div>
+                                        <p className="text-sm text-surface-500 mb-4 line-clamp-2">{cat.description}</p>
+                                        <Link
+                                            href={`/kategori/${cat.slug}`}
+                                            className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                                        >
+                                            Ürünleri Gör →
+                                        </Link>
                                     </div>
-                                    <p className="text-sm text-surface-500 mb-4 line-clamp-2">{cat.description}</p>
-                                    <Link
-                                        href={`/kategori/${cat.slug}`}
-                                        className="text-sm text-primary-600 hover:text-primary-700 font-medium"
-                                    >
-                                        Ürünleri Gör →
-                                    </Link>
-                                </div>
-                            );
-                        })}
+                                );
+                            })}
+                        </div>
                     </div>
                 )}
             </div>
+
+            {/* Category Add Modal */}
+            {showCategoryModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+                        <div className="p-5 border-b border-surface-100 flex justify-between items-center bg-surface-50">
+                            <h3 className="font-bold text-surface-800">Yeni Kategori Ekle</h3>
+                            <button onClick={() => setShowCategoryModal(false)} className="text-surface-400 hover:text-surface-600">
+                                <XCircle size={20} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleAddCategory} className="p-6 space-y-4 text-left">
+                            <div>
+                                <label className="block text-sm font-medium text-surface-700 mb-1">Kategori Adı *</label>
+                                <input 
+                                    type="text" 
+                                    required 
+                                    className="input" 
+                                    placeholder="Örn: Desenli Kumaşlar"
+                                    value={newCategory.name}
+                                    onChange={(e) => {
+                                        const name = e.target.value;
+                                        setNewCategory({...newCategory, name, slug: name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')});
+                                    }}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-surface-700 mb-1">URL (Slug) *</label>
+                                <input 
+                                    type="text" 
+                                    required 
+                                    className="input" 
+                                    placeholder="desenli-kumaslar"
+                                    value={newCategory.slug}
+                                    onChange={(e) => setNewCategory({...newCategory, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')})}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-surface-700 mb-1">Açıklama</label>
+                                <textarea 
+                                    className="input min-h-[80px]" 
+                                    placeholder="Kategori hakkında kısa açıklama..."
+                                    value={newCategory.description}
+                                    onChange={(e) => setNewCategory({...newCategory, description: e.target.value})}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-surface-700 mb-1">Görsel URL</label>
+                                <input 
+                                    type="text" 
+                                    className="input" 
+                                    placeholder="https://..."
+                                    value={newCategory.image_url}
+                                    onChange={(e) => setNewCategory({...newCategory, image_url: e.target.value})}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-surface-700 mb-1">Menü Sırası (0, 1, 2...)</label>
+                                <input 
+                                    type="number" 
+                                    className="input" 
+                                    value={newCategory.sort_order}
+                                    onChange={(e) => setNewCategory({...newCategory, sort_order: parseInt(e.target.value) || 0})}
+                                />
+                            </div>
+                            
+                            <div className="pt-4 flex justify-end gap-3 border-t border-surface-100">
+                                <button type="button" onClick={() => setShowCategoryModal(false)} className="btn btn-secondary">İptal</button>
+                                <button type="submit" disabled={isSavingCategory} className="btn btn-primary">
+                                    {isSavingCategory ? 'Kaydediliyor...' : 'Kaydet'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

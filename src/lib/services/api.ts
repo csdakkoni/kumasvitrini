@@ -14,6 +14,21 @@ export async function getCategories(): Promise<Category[]> {
     return data || [];
 }
 
+export async function createCategory(categoryData: Omit<Category, 'id' | 'product_count'>): Promise<Category> {
+    const { data, error } = await supabase
+        .from('categories')
+        .insert(categoryData)
+        .select()
+        .single();
+        
+    if (error) {
+        console.error('Error creating category:', error);
+        throw error;
+    }
+    
+    return data;
+}
+
 export async function getCategoryBySlug(slug: string): Promise<Category | null> {
     const { data, error } = await supabase
         .from('categories')
