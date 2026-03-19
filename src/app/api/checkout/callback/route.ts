@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import iyzipay from '@/lib/iyzipay';
-import { supabase } from '@/lib/supabase';
+import crypto from 'crypto';
 
 export async function POST(req: NextRequest) {
     try {
-        // Iyzico sends a form-urlencoded POST
+        // Iyzico sends a form-urlencoded POST after payment
         const contentType = req.headers.get('content-type') || '';
         let token = '';
 
@@ -20,30 +19,61 @@ export async function POST(req: NextRequest) {
             return NextResponse.redirect(new URL('/sepet?error=no_token', req.url));
         }
 
-        // Retrieve payment details from Iyzico
-        const retrieveResult = await new Promise<any>((resolve, reject) => {
-            iyzipay.checkoutForm.retrieve({
-                locale: 'TR',
-                token: token
-            }, (err: any, result: any) => {
-                if (err) return reject(err);
-                resolve(result);
-            });
+        // Retrieve payment result from Iyzico via raw HTTP (no npm package)
+        const apiKey = process.env.IYZICO_API_KEY!;
+        const secretKey = process.env.IYZICO_SECRET_KEY!;
+        const baseUrl = process.env.IYZICO_BASE_URL || 'https://sandbox-api.iyzipay.com';
+
+        const uriPath = '/payment/iyzipos/checkoutform/auth/ecom/detail';
+        const requestPayload = JSON.stringify({ locale: 'tr', token });
+        const randomString = String(process.hrtime.bigint()) + Math.random().toString(8).slice(2);
+
+        const signature = crypto
+            .createHmac('sha256', secretKey)
+            .update(randomString + uriPath + requestPayload)
+            .digest('hex');
+
+        const authorizationParams = [
+            'apiKey:' + apiKey,
+            'randomKey:' + randomString,
+            'signature:' + signature,
+        ].join('&');
+        const authorization = 'IYZWSv2 ' + Buffer.from(authorizationParams).toString('base64');
+
+        const iyzicoResponse = await fetch(`${baseUrl}${uriPath}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': authorization,
+                'Accept': 'application/json',
+                'x-iyzi-rnd': randomString,
+                'x-iyzi-client-version': 'iyzipay-node-2.0.65',
+            },
+            body: requestPayload,
         });
 
-        if (retrieveResult.status === 'success' && retrieveResult.paymentStatus === 'SUCCESS') {
-            const basketId = retrieveResult.basketId; // This is our order_number
+        const retrieveResult = await iyzicoResponse.json();
 
-            // 1. Get the order ID from our DB
-            const { data: orderData } = await supabase
+        // Use service role Supabase client for DB operations
+        const { createClient } = await import('@supabase/supabase-js');
+        const supabaseAdmin = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+
+        if (retrieveResult.status === 'success' && retrieveResult.paymentStatus === 'SUCCESS') {
+            const basketId = retrieveResult.basketId; // Our order_number
+
+            // Get the order from DB
+            const { data: orderData } = await supabaseAdmin
                 .from('orders')
                 .select('id')
                 .eq('order_number', basketId)
                 .single();
 
             if (orderData) {
-                // 2. Update the Database
-                await supabase
+                // Update payment status
+                await supabaseAdmin
                     .from('orders')
                     .update({
                         payment_status: 'paid',
@@ -52,26 +82,30 @@ export async function POST(req: NextRequest) {
                     })
                     .eq('id', orderData.id);
 
-                // 3. Redirect to success
-                return NextResponse.redirect(new URL(`/siparis-basarili?order=${orderData.id}`, req.url));
+                // Redirect to success page
+                const siteUrl = new URL(req.url).origin;
+                return NextResponse.redirect(`${siteUrl}/siparis-basarili?order=${orderData.id}`);
             } else {
-                return NextResponse.redirect(new URL(`/sepet?error=order_not_found`, req.url));
+                const siteUrl = new URL(req.url).origin;
+                return NextResponse.redirect(`${siteUrl}/sepet?error=order_not_found`);
             }
         } else {
-            console.error('Iyzico Payment Failed:', retrieveResult);
-            // Even if failed, mark payment_status as failed if we know the basketId
+            console.error('Iyzico Payment Failed:', JSON.stringify(retrieveResult));
+            // Mark as failed if we can find the order
             const basketId = retrieveResult.basketId;
             if (basketId) {
-                await supabase
+                await supabaseAdmin
                     .from('orders')
                     .update({ payment_status: 'failed' })
                     .eq('order_number', basketId);
             }
-            return NextResponse.redirect(new URL('/sepet?error=payment_failed', req.url));
+            const siteUrl = new URL(req.url).origin;
+            return NextResponse.redirect(`${siteUrl}/sepet?error=payment_failed`);
         }
 
     } catch (error: any) {
         console.error('Iyzico Callback Error:', error);
-        return NextResponse.redirect(new URL('/sepet?error=system_error', req.url));
+        const siteUrl = new URL(req.url).origin;
+        return NextResponse.redirect(`${siteUrl}/sepet?error=system_error`);
     }
 }
