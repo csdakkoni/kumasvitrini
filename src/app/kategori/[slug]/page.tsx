@@ -1,22 +1,25 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { categories, getProductsByCategory, getCategoryBySlug } from '@/lib/mock-data';
+import { getCategories, getCategoryBySlug, getProducts } from '@/lib/services/api';
 import { CategoryProductGrid } from './CategoryProductGrid';
 
-export function generateStaticParams() {
+export const revalidate = 3600; // 1 hour ISR
+
+export async function generateStaticParams() {
+    const categories = await getCategories();
     return categories.map((cat) => ({ slug: cat.slug }));
 }
 
-export function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
-    // We need to handle this synchronously for static generation
-    return params.then(({ slug }) => {
-        const category = getCategoryBySlug(slug);
-        if (!category) return { title: 'Kategori Bulunamadı' };
-        return {
-            title: `${category.name} Kumaşlar`,
-            description: category.description,
-        };
-    });
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+    const { slug } = await params;
+    const category = await getCategoryBySlug(slug);
+    
+    if (!category) return { title: 'Kategori Bulunamadı' };
+    
+    return {
+        title: `${category.name} Kumaşlar`,
+        description: category.description,
+    };
 }
 
 export default async function CategoryPage({
@@ -25,13 +28,13 @@ export default async function CategoryPage({
     params: Promise<{ slug: string }>;
 }) {
     const { slug } = await params;
-    const category = getCategoryBySlug(slug);
+    const category = await getCategoryBySlug(slug);
 
     if (!category) {
         notFound();
     }
 
-    const categoryProducts = getProductsByCategory(slug);
+    const categoryProducts = await getProducts(category.id);
 
     return (
         <div className="py-8 sm:py-12">

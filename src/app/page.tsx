@@ -1,13 +1,16 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Truck, Shield, RotateCcw, Headphones, ArrowRight, Scissors } from 'lucide-react';
-import { categories, getFeaturedProducts } from '@/lib/mock-data';
+import { getCategories, getFeaturedProducts } from '@/lib/services/api';
 import { ProductCard } from '@/components/product/ProductCard';
 import { FadeIn } from '@/components/ui/FadeIn';
 import { formatPrice, FREE_SHIPPING_THRESHOLD } from '@/lib/utils';
 
-export default function HomePage() {
-    const featuredProducts = getFeaturedProducts();
+export default async function HomePage() {
+    const [categories, featuredProducts] = await Promise.all([
+        getCategories(),
+        getFeaturedProducts()
+    ]);
 
     return (
         <>

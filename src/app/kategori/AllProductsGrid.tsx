@@ -1,10 +1,8 @@
-'use client';
-
-import { products } from '@/lib/mock-data';
+import { getProducts } from '@/lib/services/api';
 import { ProductCard } from '@/components/product/ProductCard';
 
-export function AllProductsGrid() {
-    const activeProducts = products.filter((p) => p.is_active);
+export async function AllProductsGrid() {
+    const activeProducts = await getProducts();
 
     return (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">

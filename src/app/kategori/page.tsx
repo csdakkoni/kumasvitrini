@@ -1,13 +1,17 @@
 import Link from 'next/link';
-import { categories } from '@/lib/mock-data';
+import { getCategories } from '@/lib/services/api';
 import { AllProductsGrid } from './AllProductsGrid';
+
+export const revalidate = 3600; // 1 hour ISR
 
 export const metadata = {
     title: 'Tüm Kategoriler',
     description: 'Kadife, saten, pamuklu, şifon, keten ve polyester kumaş kategorilerimizi keşfedin.',
 };
 
-export default function KategoriPage() {
+export default async function KategoriPage() {
+    const categories = await getCategories();
+
     return (
         <div className="py-8 sm:py-12">
             <div className="container-main">

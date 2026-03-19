@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { ShoppingBag, Check, Truck, Shield, RotateCcw, Ruler, Weight, Layers } from 'lucide-react';
 import { Product, Category } from '@/lib/types';
@@ -66,10 +67,12 @@ export function ProductDetail({ product, category }: ProductDetailProps) {
                         transition={{ duration: 0.5 }}
                     >
                         <div className="aspect-square rounded-2xl overflow-hidden bg-surface-100 relative">
-                            <img
+                            <Image
                                 src={product.images[0]}
                                 alt={product.name}
-                                className="absolute inset-0 w-full h-full object-cover"
+                                fill
+                                sizes="(max-width: 1024px) 100vw, 50vw"
+                                className="object-cover"
                             />
                             {/* Badges */}
                             <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
