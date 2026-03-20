@@ -1,8 +1,6 @@
 // UPS API Integration Module
 // This module handles UPS API Authentication and Shipping functionality
 
-const UPS_CLIENT_ID = process.env.UPS_CLIENT_ID;
-const UPS_CLIENT_SECRET = process.env.UPS_CLIENT_SECRET;
 const UPS_API_BASE_URL = 'https://onlinetools.ups.com'; // Production URL since these are real keys
 
 let accessToken: string | null = null;
@@ -13,6 +11,9 @@ let tokenExpiry = 0;
  * Returns the access token. Token is cached in memory until it expires.
  */
 export async function getUpsToken(): Promise<string> {
+    const UPS_CLIENT_ID = process.env.UPS_CLIENT_ID;
+    const UPS_CLIENT_SECRET = process.env.UPS_CLIENT_SECRET;
+
     if (accessToken && Date.now() < tokenExpiry) {
         return accessToken;
     }
