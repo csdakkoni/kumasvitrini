@@ -429,8 +429,15 @@ export default function AdminDashboard({ initialProducts: products, initialCateg
                                                                 </span>
                                                             )}
                                                             <button
+                                                                className="p-1.5 text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors border border-amber-200 shadow-sm bg-white"
+                                                                title="UPS Kargo Barkodu Oluştur"
+                                                                onClick={() => generateUpsLabel(order)}
+                                                            >
+                                                                <Truck size={16} />
+                                                            </button>
+                                                            <button
                                                                 className="p-1.5 text-surface-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors border shadow-sm bg-white"
-                                                                title="Kargo Etiketi Yazdır"
+                                                                title="Normal Etiket Yazdır"
                                                                 onClick={() => handlePrintLabel(order)}
                                                             >
                                                                 <Printer size={16} />
