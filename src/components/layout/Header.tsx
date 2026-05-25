@@ -10,13 +10,23 @@ import {
     X,
     ChevronDown,
 } from 'lucide-react';
-import { categories } from '@/lib/mock-data';
+import { Category } from '@/lib/types';
 
-export function Header() {
+export function Header({ initialCategories = [] }: { initialCategories?: Category[] }) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
     const [cartCount, setCartCount] = useState(0);
     const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+    const [categories, setCategories] = useState<Category[]>(initialCategories);
+
+    useEffect(() => {
+        fetch('/api/admin/categories')
+            .then(res => res.json())
+            .then(data => {
+                if (data.categories) setCategories(data.categories);
+            })
+            .catch(() => {});
+    }, []);
 
     // Track scroll for header styling
     useEffect(() => {

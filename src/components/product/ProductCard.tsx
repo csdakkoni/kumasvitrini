@@ -5,7 +5,6 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Product } from '@/lib/types';
 import { formatPrice, getDiscountPercent } from '@/lib/utils';
-import { getProductCategory } from '@/lib/mock-data';
 
 interface ProductCardProps {
     product: Product;
@@ -13,7 +12,7 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, index = 0 }: ProductCardProps) {
-    const category = getProductCategory(product);
+    const category = product.category;
     const hasDiscount = product.original_price && product.original_price > product.price_per_meter;
     const discountPercent = hasDiscount
         ? getDiscountPercent(product.original_price!, product.price_per_meter)

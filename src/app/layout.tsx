@@ -3,7 +3,9 @@ import { Inter, Outfit } from 'next/font/google';
 import './globals.css';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
+import { getCategories } from '@/lib/services/api';
 
+export const revalidate = 10; // 10 seconds ISR
 // Font Optimization
 const inter = Inter({
     subsets: ['latin', 'latin-ext'],
@@ -66,17 +68,19 @@ export const metadata: Metadata = {
     metadataBase: new URL('https://kumasvitrini.vercel.app'),
 };
 
-export default function RootLayout({
+export default async function RootLayout({
     children,
 }: Readonly<{
     children: React.ReactNode;
 }>) {
+    const categories = await getCategories();
+    
     return (
         <html lang="tr" className={`${inter.variable} ${outfit.variable}`}>
             <body className="font-sans min-h-screen flex flex-col antialiased">
-                <Header />
+                <Header initialCategories={categories} />
                 <main className="flex-1">{children}</main>
-                <Footer />
+                <Footer initialCategories={categories} />
             </body>
         </html>
     );

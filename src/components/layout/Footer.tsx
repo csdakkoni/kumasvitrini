@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { Phone, Mail, MapPin, Clock, Instagram, Facebook } from 'lucide-react';
-import { categories } from '@/lib/mock-data';
+import { Category } from '@/lib/types';
 
-export function Footer() {
+export function Footer({ initialCategories = [] }: { initialCategories?: Category[] }) {
+    const categories = initialCategories;
     return (
         <footer className="bg-surface-900 text-surface-300 mt-auto">
             {/* Main footer */}

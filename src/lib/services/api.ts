@@ -61,7 +61,7 @@ export async function getCategoryById(id: string): Promise<Category | null> {
 export async function getProducts(categoryId?: string): Promise<Product[]> {
     let query = supabase
         .from('products')
-        .select('*')
+        .select('*, category:categories(*)')
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
@@ -81,7 +81,7 @@ export async function getProducts(categoryId?: string): Promise<Product[]> {
 export async function getFeaturedProducts(): Promise<Product[]> {
     const { data, error } = await supabase
         .from('products')
-        .select('*')
+        .select('*, category:categories(*)')
         .eq('is_active', true)
         .eq('is_featured', true)
         .order('created_at', { ascending: false })
@@ -97,7 +97,7 @@ export async function getFeaturedProducts(): Promise<Product[]> {
 export async function getProductBySlug(slug: string): Promise<Product | null> {
     const { data, error } = await supabase
         .from('products')
-        .select('*')
+        .select('*, category:categories(*)')
         .eq('is_active', true)
         .eq('slug', slug)
         .single();

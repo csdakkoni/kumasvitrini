@@ -106,7 +106,7 @@ export default async function HomePage() {
                                 >
                                 <Link href={`/kategori/${cat.slug}`} className="category-card block group">
                                     <Image 
-                                        src={`/images/categories/${cat.slug}.png`} 
+                                        src={cat.image_url || `/images/categories/${cat.slug}.png`} 
                                         alt={cat.name} 
                                         fill
                                         sizes="(max-width: 640px) 50vw, 33vw"
