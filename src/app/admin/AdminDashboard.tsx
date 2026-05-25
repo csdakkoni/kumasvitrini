@@ -8,6 +8,14 @@ import { Package, Tag, TrendingUp, AlertTriangle, Edit, Eye, Plus, BarChart3, Lo
 import { Product, Category, Order, OrderStatus } from '@/lib/types';
 import { updateOrderStatus } from '@/lib/services/api';
 
+function slugify(text: string): string {
+    return text
+        .toLowerCase()
+        .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
+        .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+        .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+
 interface AdminDashboardProps {
     initialProducts: Product[];
     initialCategories: Category[];
@@ -618,7 +626,7 @@ export default function AdminDashboard({ initialProducts: products, initialCateg
                                     value={newCategory.name}
                                     onChange={(e) => {
                                         const name = e.target.value;
-                                        setNewCategory({...newCategory, name, slug: name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')});
+                                        setNewCategory({...newCategory, name, slug: slugify(name)});
                                     }}
                                 />
                             </div>
@@ -630,7 +638,7 @@ export default function AdminDashboard({ initialProducts: products, initialCateg
                                     className="input" 
                                     placeholder="desenli-kumaslar"
                                     value={newCategory.slug}
-                                    onChange={(e) => setNewCategory({...newCategory, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')})}
+                                    onChange={(e) => setNewCategory({...newCategory, slug: slugify(e.target.value)})}
                                 />
                             </div>
                             <div>
