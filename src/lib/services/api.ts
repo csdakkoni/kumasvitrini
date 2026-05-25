@@ -15,18 +15,19 @@ export async function getCategories(): Promise<Category[]> {
 }
 
 export async function createCategory(categoryData: Omit<Category, 'id' | 'product_count'>): Promise<Category> {
-    const { data, error } = await supabase
-        .from('categories')
-        .insert(categoryData)
-        .select()
-        .single();
-        
-    if (error) {
-        console.error('Error creating category:', error);
-        throw error;
+    const res = await fetch('/api/admin/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(categoryData),
+    });
+
+    if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Kategori eklenirken hata oluştu');
     }
-    
-    return data;
+
+    const data = await res.json();
+    return data.category;
 }
 
 export async function getCategoryBySlug(slug: string): Promise<Category | null> {
