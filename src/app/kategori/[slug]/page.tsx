@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { getCategories, getCategoryBySlug, getProducts } from '@/lib/services/api';
 import { ProductGridWithFilters } from '@/components/product/ProductGridWithFilters';
 
-export const revalidate = 3600; // 1 hour ISR
+export const revalidate = 10; // 10 seconds ISR
 
 export async function generateStaticParams() {
     const categories = await getCategories();

@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { getProducts, getProductBySlug, getCategoryById } from '@/lib/services/api';
 import { ProductDetail } from './ProductDetail';
 
-export const revalidate = 3600; // 1 hour ISR
+export const revalidate = 10; // 10 seconds ISR
 
 export async function generateStaticParams() {
     const products = await getProducts();

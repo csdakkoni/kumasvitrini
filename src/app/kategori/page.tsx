@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { getCategories } from '@/lib/services/api';
 import { AllProductsGrid } from './AllProductsGrid';
 
-export const revalidate = 3600; // 1 hour ISR
+export const revalidate = 10; // 10 seconds ISR
 
 export const metadata = {
     title: 'Tüm Kategoriler',

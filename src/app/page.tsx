@@ -6,6 +6,8 @@ import { ProductCard } from '@/components/product/ProductCard';
 import { FadeIn } from '@/components/ui/FadeIn';
 import { formatPrice, FREE_SHIPPING_THRESHOLD } from '@/lib/utils';
 
+export const revalidate = 10; // 10 seconds ISR
+
 export default async function HomePage() {
     const [categories, featuredProducts] = await Promise.all([
         getCategories(),
