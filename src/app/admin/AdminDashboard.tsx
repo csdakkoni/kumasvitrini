@@ -25,6 +25,7 @@ export default function AdminDashboard({ initialProducts: products, initialCateg
     // Category Modal State
     const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [isSavingCategory, setIsSavingCategory] = useState(false);
+    const [isUploadingCategoryImg, setIsUploadingCategoryImg] = useState(false);
     const [newCategory, setNewCategory] = useState({
         name: '',
         slug: '',
@@ -32,6 +33,44 @@ export default function AdminDashboard({ initialProducts: products, initialCateg
         image_url: '',
         sort_order: 0
     });
+
+    const handleCategoryImgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploadingCategoryImg(true);
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const res = await fetch('/api/admin/upload', {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await res.json();
+            
+            if (res.ok && data.url) {
+                setNewCategory(prev => ({
+                    ...prev,
+                    image_url: data.url
+                }));
+            } else {
+                alert(data.error || 'Görsel yüklenemedi');
+            }
+        } catch (error) {
+            alert('Görsel yüklenirken bir hata oluştu');
+        } finally {
+            setIsUploadingCategoryImg(false);
+            if (e.target) e.target.value = ''; // Reset input
+        }
+    };
+
+    const handleRemoveCategoryImg = () => {
+        setNewCategory(prev => ({
+            ...prev,
+            image_url: ''
+        }));
+    };
 
     const handleAddCategory = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -604,14 +643,38 @@ export default function AdminDashboard({ initialProducts: products, initialCateg
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-surface-700 mb-1">Görsel URL</label>
-                                <input 
-                                    type="text" 
-                                    className="input" 
-                                    placeholder="https://..."
-                                    value={newCategory.image_url}
-                                    onChange={(e) => setNewCategory({...newCategory, image_url: e.target.value})}
-                                />
+                                <label className="block text-sm font-medium text-surface-700 mb-1">Kategori Görseli</label>
+                                <div className="flex items-center gap-3">
+                                    {newCategory.image_url ? (
+                                        <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-surface-200 bg-surface-100 flex-shrink-0">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img src={newCategory.image_url} alt="Kategori Önizleme" className="w-full h-full object-cover" />
+                                            <button 
+                                                type="button" 
+                                                onClick={handleRemoveCategoryImg}
+                                                className="absolute inset-0 bg-black/40 hover:bg-black/60 flex items-center justify-center text-white transition-colors"
+                                                title="Görseli Kaldır"
+                                            >
+                                                <XCircle size={16} />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <label className={`flex-1 flex flex-col items-center justify-center h-16 border-2 border-dashed border-surface-200 rounded-lg cursor-pointer hover:border-primary-500 transition-colors ${isUploadingCategoryImg ? 'opacity-50 pointer-events-none' : ''}`}>
+                                            <input 
+                                                type="file" 
+                                                className="hidden" 
+                                                accept="image/*" 
+                                                onChange={handleCategoryImgUpload}
+                                                disabled={isUploadingCategoryImg}
+                                            />
+                                            {isUploadingCategoryImg ? (
+                                                <span className="text-xs text-surface-400">Yükleniyor...</span>
+                                            ) : (
+                                                <span className="text-xs text-surface-500 font-medium">Görsel Seç ve Yükle</span>
+                                            )}
+                                        </label>
+                                    )}
+                                </div>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-surface-700 mb-1">Menü Sırası (0, 1, 2...)</label>
